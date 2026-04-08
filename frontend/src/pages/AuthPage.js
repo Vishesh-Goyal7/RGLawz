@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import api from "../services/api";
 import "../styles/AuthPage.css";
 
-const AuthPage = () => {
+const AuthPage = ({ setIsAuthenticated }) => {
   const [mode, setMode] = useState("login"); // login | forgot
 
   const [formData, setFormData] = useState({
@@ -41,6 +41,7 @@ const AuthPage = () => {
       localStorage.setItem("user", JSON.stringify(user));
 
       setMessage("Login successful.");
+      setIsAuthenticated(true);
     } catch (err) {
       setError(err.response?.data?.message || "Login failed.");
     } finally {
