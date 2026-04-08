@@ -386,3 +386,137 @@
     grid-template-columns: 1fr;
   }
 }
+
+.modal-card {
+  width: 100%;
+  max-width: 700px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
+}
+
+.large-modal {
+  max-width: 950px;
+}
+
+.history-modal {
+  max-width: 950px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.hearing-link-btn {
+  background: #efe7ff;
+  color: #6b46c1;
+  border: none;
+  border-radius: 9px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.hearing-link-btn:hover {
+  background: #e3d7ff;
+}
+
+.case-hearings-body {
+  padding: 20px 22px;
+}
+
+.case-hearing-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.case-hearing-item {
+  width: 100%;
+  border: 1px solid #eee3dc;
+  border-radius: 12px;
+  background: #fcfaf8;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.case-hearing-item:hover {
+  background: #f8f1ec;
+}
+
+.case-hearing-item h4 {
+  color: #6f4a36;
+  margin-bottom: 6px;
+}
+
+.case-hearing-item p {
+  color: #555;
+}
+
+.hearing-detail-body {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.hearing-detail-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: #444;
+}
+
+.hearing-detail-row.vertical {
+  flex-direction: column;
+}
+
+.detail-box {
+  background: #fcfaf8;
+  border: 1px solid #eee3dc;
+  border-radius: 12px;
+  padding: 14px;
+  color: #333;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 800px) {
+  .case-hearing-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .hearing-detail-row {
+    flex-direction: column;
+  }
+}
+
+.case-hearing-item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.case-hearing-main {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+  cursor: pointer;
+  gap: 14px;
+}
+
+.case-hearing-actions {
+  display: flex;
+  justify-content: flex-end;
+}

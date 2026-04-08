@@ -1,0 +1,231 @@
+.hearing-management {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.hearing-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #eee3dc;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+
+.hearing-toolbar h2 {
+  color: #6f4a36;
+  margin-bottom: 6px;
+}
+
+.hearing-toolbar p {
+  color: #666;
+}
+
+.hearing-filters {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 14px;
+  background: #ffffff;
+  border: 1px solid #eee3dc;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+
+.hearing-filters input,
+.hearing-filters select,
+.hearing-form-grid input,
+.hearing-form-grid select,
+.hearing-form-grid textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #ddd4ce;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  outline: none;
+  transition: 0.2s ease;
+  background: #fff;
+}
+
+.hearing-filters input:focus,
+.hearing-filters select:focus,
+.hearing-form-grid input:focus,
+.hearing-form-grid select:focus,
+.hearing-form-grid textarea:focus {
+  border-color: #9d5e3d;
+  box-shadow: 0 0 0 3px rgba(157, 94, 61, 0.12);
+}
+
+.hearing-table-card {
+  background: #ffffff;
+  border: 1px solid #eee3dc;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+
+.hearing-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 22px;
+}
+
+.today-hearing-card {
+  background: #fffaf6;
+  border: 1px solid #ecd9ce;
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.today-hearing-card h4 {
+  color: #6f4a36;
+  margin-bottom: 5px;
+}
+
+.today-hearing-card p {
+  color: #555;
+}
+
+@media (max-width: 900px) {
+  .hearing-filters,
+  .hearing-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hearing-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .today-hearing-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.modal-card {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.hearing-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.hearing-group-card {
+  background: #ffffff;
+  border: 1px solid #eee3dc;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+
+.hearing-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0e4dd;
+}
+
+.hearing-group-header h3 {
+  color: #6f4a36;
+  font-size: 1.05rem;
+}
+
+.hearing-group-header span {
+  color: #777;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.hearing-group-latest {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.grouped-hearing-row {
+  border: 1px solid #eee3dc;
+  border-radius: 12px;
+  background: #fcfaf8;
+  padding: 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+}
+
+.grouped-hearing-main {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.grouped-hearing-main h4 {
+  color: #6f4a36;
+  margin-bottom: 6px;
+}
+
+.grouped-hearing-main p {
+  color: #555;
+  margin-bottom: 4px;
+}
+
+.grouped-hearing-main p span {
+  text-transform: capitalize;
+}
+
+.grouped-hearing-actions {
+  display: flex;
+  align-items: center;
+}
+
+.hearing-group-older-wrapper {
+  margin-top: 18px;
+}
+
+.hearing-group-older-wrapper h4 {
+  color: #7b5a48;
+  margin-bottom: 10px;
+  font-size: 0.96rem;
+}
+
+.hearing-group-older-scroll {
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 4px;
+}
+
+@media (max-width: 900px) {
+  .grouped-hearing-row,
+  .grouped-hearing-main {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .hearing-group-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

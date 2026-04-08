@@ -1,16 +1,23 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
 import CaseManagement from "../components/CaseManagement";
 import UserManagement from "../components/UserManagement";
+import HearingManagement from "../components/HearingManagement";
+import HearingFormModal from "../components/HearingFormModal";
 import "../styles/DashboardPage.css";
+import "../styles/HearingManagement.css";
 
 const DashboardPage = ({ setIsAuthenticated }) => {
   const [activeSection, setActiveSection] = useState("dashboard");
   const [cases, setCases] = useState([]);
   const [hearings, setHearings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(new Date());
+
+  const [isHearingModalOpen, setIsHearingModalOpen] = useState(false);
+  const [editingHearing, setEditingHearing] = useState(null);
 
   const token = localStorage.getItem("token");
 
@@ -23,6 +30,14 @@ const DashboardPage = ({ setIsAuthenticated }) => {
   useEffect(() => {
     fetchDashboardData();
     // eslint-disable-next-line
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(new Date());
+    }, 60000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const fetchDashboardData = async () => {
@@ -43,16 +58,32 @@ const DashboardPage = ({ setIsAuthenticated }) => {
     }
   };
 
-  const today = new Date();
+  const openHearingModal = (hearing) => {
+    setEditingHearing(hearing);
+    setIsHearingModalOpen(true);
+  };
 
-  const upcomingHearings = hearings
-    .filter((hearing) => hearing.nextHearingDate || hearing.hearingDate)
-    .sort(
-      (a, b) =>
-        new Date(a.nextHearingDate || a.hearingDate) -
-        new Date(b.nextHearingDate || b.hearingDate)
-    )
-    .slice(0, 5);
+  const closeHearingModal = () => {
+    setEditingHearing(null);
+    setIsHearingModalOpen(false);
+  };
+
+  const isSameDay = (dateA, dateB) => {
+    const a = new Date(dateA);
+    const b = new Date(dateB);
+
+    return (
+      a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate()
+    );
+  };
+
+  const todaysHearings = useMemo(() => {
+    return hearings
+      .filter((hearing) => isSameDay(hearing.hearingDate, now))
+      .sort((a, b) => new Date(a.hearingDate) - new Date(b.hearingDate));
+  }, [hearings, now]);
 
   const totalCases = cases.length;
   const activeCases = cases.filter((c) => c.caseStatus === "active").length;
@@ -123,35 +154,33 @@ const DashboardPage = ({ setIsAuthenticated }) => {
 
         <div className="dashboard-panel">
           <div className="panel-header">
-            <h3>Upcoming Hearings</h3>
+            <h3>Today's Hearings</h3>
           </div>
 
-          {upcomingHearings.length === 0 ? (
-            <p className="empty-text">No upcoming hearings found.</p>
+          {todaysHearings.length === 0 ? (
+            <p className="empty-text">No hearings scheduled for today.</p>
           ) : (
-            <div className="table-wrapper">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Case</th>
-                    <th>Hearing Date</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {upcomingHearings.map((item) => (
-                    <tr key={item._id}>
-                      <td>{item.caseId?.caseName || "Unnamed Case"}</td>
-                      <td>
-                        {new Date(
-                          item.nextHearingDate || item.hearingDate
-                        ).toLocaleDateString()}
-                      </td>
-                      <td>{item.hearingStatus}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div>
+              {todaysHearings.map((item) => (
+                <div className="today-hearing-card" key={item._id}>
+                  <div>
+                    <h4>
+                      {item.caseId?.caseNumber} — {item.caseId?.caseName}
+                    </h4>
+                    <p>
+                      Time: {new Date(item.hearingDate).toLocaleTimeString()}
+                    </p>
+                    <p>Status: {item.hearingStatus}</p>
+                  </div>
+
+                  <button
+                    className="primary-btn"
+                    onClick={() => openHearingModal(item)}
+                  >
+                    Add Hearing Info
+                  </button>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -177,10 +206,7 @@ const DashboardPage = ({ setIsAuthenticated }) => {
       case "cases":
         return <CaseManagement />;
       case "hearings":
-        return renderPlaceholder(
-          "Hearings Module",
-          "Hearing management UI will be added next."
-        );
+        return <HearingManagement />;
       case "calendar":
         return renderPlaceholder(
           "Calendar Module",
@@ -205,6 +231,15 @@ const DashboardPage = ({ setIsAuthenticated }) => {
 
         <div className="dashboard-content">{renderContent()}</div>
       </div>
+
+      {isHearingModalOpen && (
+        <HearingFormModal
+          onClose={closeHearingModal}
+          onSuccess={fetchDashboardData}
+          editingHearing={editingHearing}
+          authHeaders={authHeaders}
+        />
+      )}
     </div>
   );
 };

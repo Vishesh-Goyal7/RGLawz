@@ -28,6 +28,49 @@ const buildChangeLog = (existingHearing, updates) => {
 };
 
 /**
+ * Helper: check if user can access a case
+ */
+const canUserAccessCase = async (user, caseId) => {
+  if (user.role === "admin") return true;
+
+  const caseDoc = await Case.findOne({
+    _id: caseId,
+    lawyerIds: user._id,
+  });
+
+  return !!caseDoc;
+};
+
+/**
+ * Helper: create upcoming hearing automatically if next hearing date exists
+ */
+const ensureUpcomingHearingExists = async (hearingDoc, userId) => {
+  if (!hearingDoc.nextHearingDate || !hearingDoc.caseId) return;
+
+  const existingUpcoming = await Hearing.findOne({
+    caseId: hearingDoc.caseId,
+    hearingDate: hearingDoc.nextHearingDate,
+    hearingStatus: "upcoming",
+  });
+
+  if (existingUpcoming) return;
+
+  await Hearing.create({
+    caseId: hearingDoc.caseId,
+    hearingDate: hearingDoc.nextHearingDate,
+    hearingVerdict: "",
+    hearingNotes: "",
+    hearingStatus: "upcoming",
+    nextHearingDate: null,
+    updatedCaseStatus: "",
+    addedBy: userId,
+    createdBy: userId,
+    updatedBy: userId,
+    updateHistory: [],
+  });
+};
+
+/**
  * Helper: sync hearing data back into linked case
  */
 const syncCaseFromHearing = async (caseId, hearingDoc, userId) => {
@@ -124,6 +167,14 @@ const createHearing = async (req, res) => {
       });
     }
 
+    const canAccess = await canUserAccessCase(req.user, caseId);
+    if (!canAccess) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not assigned to this case.",
+      });
+    }
+
     const hearing = await Hearing.create({
       caseId,
       hearingDate,
@@ -139,6 +190,7 @@ const createHearing = async (req, res) => {
     });
 
     await syncCaseFromHearing(caseId, hearing, req.user._id);
+    await ensureUpcomingHearingExists(hearing, req.user._id);
 
     const populatedHearing = await Hearing.findById(hearing._id)
       .populate("caseId")
@@ -199,12 +251,36 @@ const getAllHearings = async (req, res) => {
       }
     }
 
+    if (req.user.role !== "admin") {
+      const assignedCases = await Case.find({ lawyerIds: req.user._id }).select("_id");
+      const assignedCaseIds = assignedCases.map((c) => c._id);
+
+      if (caseId) {
+        const requestedAllowed = assignedCaseIds.some(
+          (id) => id.toString() === caseId.toString()
+        );
+
+        if (!requestedAllowed) {
+          return res.status(200).json({
+            success: true,
+            count: 0,
+            message: "Hearings fetched successfully.",
+            data: [],
+          });
+        }
+
+        filter.caseId = caseId;
+      } else {
+        filter.caseId = { $in: assignedCaseIds };
+      }
+    }
+
     const hearings = await Hearing.find(filter)
       .populate("caseId")
       .populate("addedBy", "name email role")
       .populate("createdBy", "name email role")
       .populate("updatedBy", "name email role")
-      .sort({ hearingDate: -1, updatedAt: -1 });
+      .sort({ hearingDate: -1, createdAt: -1 });
 
     return res.status(200).json({
       success: true,
@@ -251,6 +327,14 @@ const getHearingById = async (req, res) => {
       });
     }
 
+    const canAccess = await canUserAccessCase(req.user, hearing.caseId._id);
+    if (!canAccess) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not assigned to this case.",
+      });
+    }
+
     return res.status(200).json({
       success: true,
       message: "Hearing fetched successfully.",
@@ -287,6 +371,14 @@ const updateHearing = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Hearing not found.",
+      });
+    }
+
+    const canAccessExistingCase = await canUserAccessCase(req.user, existingHearing.caseId);
+    if (!canAccessExistingCase) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not assigned to this case.",
       });
     }
 
@@ -328,6 +420,14 @@ const updateHearing = async (req, res) => {
         return res.status(404).json({
           success: false,
           message: "Linked case not found.",
+        });
+      }
+
+      const canAccessNewCase = await canUserAccessCase(req.user, updates.caseId);
+      if (!canAccessNewCase) {
+        return res.status(403).json({
+          success: false,
+          message: "You are not assigned to the target case.",
         });
       }
     }
@@ -373,6 +473,7 @@ const updateHearing = async (req, res) => {
       .populate("updateHistory.updatedBy", "name email role");
 
     await syncCaseFromHearing(updatedHearing.caseId._id, updatedHearing, req.user._id);
+    await ensureUpcomingHearingExists(updatedHearing, req.user._id);
 
     return res.status(200).json({
       success: true,

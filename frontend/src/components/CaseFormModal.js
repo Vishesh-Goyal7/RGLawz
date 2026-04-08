@@ -57,6 +57,34 @@ const CaseFormModal = ({
     }
   }, [editingCase]);
 
+  const ensureInitialHearingExists = async (caseId, nextHearingDate) => {
+    if (!caseId || !nextHearingDate) return;
+
+    try {
+      const hearingsRes = await api.get(`/hearings?caseId=${caseId}`, authHeaders);
+      const existingHearings = hearingsRes.data?.data || [];
+
+      if (existingHearings.length > 0) return;
+
+      await api.post(
+        "/hearings",
+        {
+          caseId,
+          hearingDate: nextHearingDate,
+          hearingStatus: "upcoming",
+          hearingVerdict: "",
+          nextHearingDate: null,
+          hearingNotes: "",
+          updatedCaseStatus: "",
+        },
+        authHeaders
+      );
+    } catch (error) {
+      console.error("Failed to auto-create initial hearing:", error);
+      throw error;
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -128,11 +156,21 @@ const CaseFormModal = ({
         }
       }
 
+      let savedCaseId = editingCase?._id;
+
       if (editingCase) {
-        await api.put(`/cases/${editingCase._id}`, buildPayload(), authHeaders);
+        const updateRes = await api.put(
+          `/cases/${editingCase._id}`,
+          buildPayload(),
+          authHeaders
+        );
+        savedCaseId = updateRes.data?.data?._id || editingCase._id;
       } else {
-        await api.post("/cases", buildPayload(), authHeaders);
+        const createRes = await api.post("/cases", buildPayload(), authHeaders);
+        savedCaseId = createRes.data?.data?._id;
       }
+
+      await ensureInitialHearingExists(savedCaseId, formData.nextHearingDate);
 
       await onSuccess();
       onClose();

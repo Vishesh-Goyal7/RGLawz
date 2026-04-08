@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
 import CaseFormModal from "./CaseFormModal";
 import CaseHistoryModal from "./CaseHistoryModal";
+import CaseHearingsModal from "./CaseHearingsModal";
 import "../styles/CaseManagement.css";
 
 const CaseManagement = () => {
@@ -21,6 +22,9 @@ const CaseManagement = () => {
 
   const [historyCase, setHistoryCase] = useState(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+
+  const [hearingsCase, setHearingsCase] = useState(null);
+  const [isHearingsOpen, setIsHearingsOpen] = useState(false);
 
   const authHeaders = {
     headers: {
@@ -78,11 +82,18 @@ const CaseManagement = () => {
     }
   };
 
+  const openHearingsModal = (caseItem) => {
+    setHearingsCase(caseItem);
+    setIsHearingsOpen(true);
+  };
+
   const closeModals = () => {
     setIsFormOpen(false);
     setEditingCase(null);
     setIsHistoryOpen(false);
     setHistoryCase(null);
+    setIsHearingsOpen(false);
+    setHearingsCase(null);
   };
 
   const handleDeleteCase = async (caseId) => {
@@ -228,6 +239,13 @@ const CaseManagement = () => {
                           History
                         </button>
 
+                        <button
+                          className="hearing-link-btn"
+                          onClick={() => openHearingsModal(item)}
+                        >
+                          Hearings
+                        </button>
+
                         {storedUser.role === "admin" && (
                           <button
                             className="danger-btn"
@@ -259,6 +277,14 @@ const CaseManagement = () => {
 
       {isHistoryOpen && historyCase && (
         <CaseHistoryModal caseData={historyCase} onClose={closeModals} />
+      )}
+
+      {isHearingsOpen && hearingsCase && (
+        <CaseHearingsModal
+          caseData={hearingsCase}
+          authHeaders={authHeaders}
+          onClose={closeModals}
+        />
       )}
     </div>
   );
