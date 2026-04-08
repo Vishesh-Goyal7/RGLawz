@@ -65,11 +65,34 @@ const AssignCaseModal = ({
     }
   };
 
+  const handleUnassign = async (caseId) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to unassign this user from the selected case?"
+    );
+    if (!confirmed) return;
+
+    try {
+      setLoading(true);
+
+      await api.patch(
+        `/users/unassign-case/${caseId}`,
+        { userId: selectedUser._id },
+        authHeaders
+      );
+
+      await onSuccess();
+    } catch (error) {
+      alert(error.response?.data?.message || "Failed to unassign case.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="modal-overlay">
       <div className="modal-card">
         <div className="modal-header">
-          <h3>Assign Cases to {selectedUser.name}</h3>
+          <h3>Manage Cases for {selectedUser.name}</h3>
           <button className="close-btn" onClick={onClose}>
             ×
           </button>
@@ -81,13 +104,24 @@ const AssignCaseModal = ({
             {assignedCases.length === 0 ? (
               <p className="empty-text">No assigned cases yet.</p>
             ) : (
-              <ul className="assigned-case-list">
+              <div className="assigned-case-grid">
                 {assignedCases.map((c) => (
-                  <li key={c._id}>
-                    {c.caseNumber} — {c.caseName}
-                  </li>
+                  <div className="assigned-case-card" key={c._id}>
+                    <div>
+                      <strong>{c.caseNumber}</strong>
+                      <p>{c.caseName}</p>
+                    </div>
+
+                    <button
+                      className="danger-btn"
+                      onClick={() => handleUnassign(c._id)}
+                      disabled={loading}
+                    >
+                      Unassign
+                    </button>
+                  </div>
                 ))}
-              </ul>
+              </div>
             )}
           </div>
 
@@ -124,7 +158,7 @@ const AssignCaseModal = ({
                 onClick={handleAssign}
                 disabled={loading}
               >
-                {loading ? "Assigning..." : "Assign Case"}
+                {loading ? "Processing..." : "Assign Case"}
               </button>
             </div>
           </div>

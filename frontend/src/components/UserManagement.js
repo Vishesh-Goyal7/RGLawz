@@ -103,6 +103,37 @@ const UserManagement = () => {
     }
   };
 
+  const handleToggleAdminRole = async (user) => {
+    if (currentUser._id === user._id) {
+      alert("You cannot change your own admin privileges from here.");
+      return;
+    }
+
+    const targetRole = user.role === "admin" ? "junior" : "admin";
+    const actionText =
+      user.role === "admin"
+        ? "remove admin privileges from"
+        : "grant admin privileges to";
+
+    const confirmed = window.confirm(
+      `Are you sure you want to ${actionText} ${user.name}?`
+    );
+    if (!confirmed) return;
+
+    try {
+      await api.put(
+        `/users/${user._id}`,
+        {
+          role: targetRole,
+        },
+        authHeaders
+      );
+      await fetchAll();
+    } catch (error) {
+      alert(error.response?.data?.message || "Failed to update user role.");
+    }
+  };
+
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
       const text = searchText.toLowerCase();
@@ -230,6 +261,17 @@ const UserManagement = () => {
                         >
                           Assign Cases
                         </button>
+
+                        {currentUser._id !== user._id && (
+                          <button
+                            className="admin-toggle-btn"
+                            onClick={() => handleToggleAdminRole(user)}
+                          >
+                            {user.role === "admin"
+                              ? "Remove Admin"
+                              : "Make Admin"}
+                          </button>
+                        )}
 
                         <button
                           className="secondary-btn"

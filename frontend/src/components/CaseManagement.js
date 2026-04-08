@@ -30,7 +30,9 @@ const CaseManagement = () => {
 
   useEffect(() => {
     fetchCases();
-    fetchUsers();
+    if (storedUser.role === "admin") {
+      fetchUsers();
+    }
     // eslint-disable-next-line
   }, []);
 
@@ -48,16 +50,10 @@ const CaseManagement = () => {
 
   const fetchUsers = async () => {
     try {
-      const res = await api.get("/auth/me", authHeaders);
-      const me = res.data.data;
-
-      // fallback list if users endpoint does not exist yet
-      setUsers((prev) => {
-        const exists = prev.some((u) => u._id === me._id);
-        return exists ? prev : [me];
-      });
+      const res = await api.get("/users", authHeaders);
+      setUsers(res.data.data || []);
     } catch (error) {
-      console.error("Failed to fetch current user:", error);
+      console.error("Failed to fetch users:", error);
     }
   };
 
@@ -184,6 +180,8 @@ const CaseManagement = () => {
                   <th>Defendant</th>
                   <th>Status</th>
                   <th>Court</th>
+                  <th>Assigned Lawyers</th>
+                  <th>Primary Lawyer</th>
                   <th>Next Hearing</th>
                   <th>Updated By</th>
                   <th>Actions</th>
@@ -202,6 +200,12 @@ const CaseManagement = () => {
                       </span>
                     </td>
                     <td>{item.courtName || "N/A"}</td>
+                    <td>
+                      {(item.lawyerIds || []).length > 0
+                        ? item.lawyerIds.map((l) => l.name).join(", ")
+                        : "Unassigned"}
+                    </td>
+                    <td>{item.primaryLawyerId?.name || "N/A"}</td>
                     <td>
                       {item.nextHearingDate
                         ? new Date(item.nextHearingDate).toLocaleDateString()
@@ -248,6 +252,8 @@ const CaseManagement = () => {
           onSuccess={fetchCases}
           editingCase={editingCase}
           authHeaders={authHeaders}
+          users={users}
+          currentUser={storedUser}
         />
       )}
 

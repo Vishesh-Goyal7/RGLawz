@@ -7,6 +7,7 @@ const {
   resetUserPassword,
   deleteUser,
   assignLawyersToCase,
+  unassignLawyerFromCase,
 } = require("../controllers/userController");
 const protect = require("../middleware/authMiddleware");
 const adminOnly = require("../middleware/adminMiddleware");
@@ -21,6 +22,8 @@ router.post("/", createUser);
 router.put("/:id", updateUser);
 router.patch("/:id/reset-password", resetUserPassword);
 router.delete("/:id", deleteUser);
+
 router.patch("/assign-case/:caseId", assignLawyersToCase);
+router.patch("/unassign-case/:caseId", unassignLawyerFromCase);
 
 module.exports = router;

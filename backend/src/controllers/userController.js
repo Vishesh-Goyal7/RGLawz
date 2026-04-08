@@ -4,15 +4,67 @@ const User = require("../models/User");
 const Case = require("../models/Case");
 
 /**
+ * Helper: remove user from all cases
+ */
+const unassignUserFromAllCases = async (userId, adminUserId) => {
+  const cases = await Case.find({
+    $or: [{ lawyerIds: userId }, { primaryLawyerId: userId }],
+  });
+
+  for (const caseDoc of cases) {
+    const changes = [];
+
+    const oldLawyerIds = [...caseDoc.lawyerIds];
+    const newLawyerIds = caseDoc.lawyerIds.filter(
+      (id) => id.toString() !== userId.toString()
+    );
+
+    if (
+      JSON.stringify(oldLawyerIds.map(String)) !==
+      JSON.stringify(newLawyerIds.map(String))
+    ) {
+      changes.push({
+        field: "lawyerIds",
+        oldValue: oldLawyerIds,
+        newValue: newLawyerIds,
+      });
+      caseDoc.lawyerIds = newLawyerIds;
+    }
+
+    if (
+      caseDoc.primaryLawyerId &&
+      caseDoc.primaryLawyerId.toString() === userId.toString()
+    ) {
+      changes.push({
+        field: "primaryLawyerId",
+        oldValue: caseDoc.primaryLawyerId,
+        newValue: null,
+      });
+      caseDoc.primaryLawyerId = null;
+    }
+
+    caseDoc.updatedBy = adminUserId;
+
+    if (changes.length > 0) {
+      caseDoc.updateHistory.push({
+        updatedBy: adminUserId,
+        updatedAt: new Date(),
+        changes,
+      });
+    }
+
+    await caseDoc.save();
+  }
+};
+
+/**
  * @desc    Get all users
  * @route   GET /api/users
  * @access  Private (Admin only)
  */
 const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find({})
-      .select("-passwordHash")
-      .sort({ createdAt: -1 });
+    const users = await User.find({}).select("-passwordHash").sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
@@ -159,6 +211,8 @@ const updateUser = async (req, res) => {
       });
     }
 
+    const wasActive = user.isActive;
+
     if (email) {
       const normalizedEmail = email.trim().toLowerCase();
 
@@ -195,6 +249,11 @@ const updateUser = async (req, res) => {
     }
 
     await user.save();
+
+    // Auto-unassign if deactivated
+    if (wasActive === true && user.isActive === false) {
+      await unassignUserFromAllCases(user._id, req.user._id);
+    }
 
     return res.status(200).json({
       success: true,
@@ -302,21 +361,8 @@ const deleteUser = async (req, res) => {
       });
     }
 
+    await unassignUserFromAllCases(user._id, req.user._id);
     await User.findByIdAndDelete(id);
-
-    await Case.updateMany(
-      { lawyerIds: id },
-      {
-        $pull: { lawyerIds: id },
-      }
-    );
-
-    await Case.updateMany(
-      { primaryLawyerId: id },
-      {
-        $set: { primaryLawyerId: null },
-      }
-    );
 
     return res.status(200).json({
       success: true,
@@ -452,6 +498,95 @@ const assignLawyersToCase = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Unassign one user from one case
+ * @route   PATCH /api/users/unassign-case/:caseId
+ * @access  Private (Admin only)
+ */
+const unassignLawyerFromCase = async (req, res) => {
+  try {
+    const { caseId } = req.params;
+    const { userId } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(caseId) || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid case ID or user ID.",
+      });
+    }
+
+    const caseDoc = await Case.findById(caseId);
+
+    if (!caseDoc) {
+      return res.status(404).json({
+        success: false,
+        message: "Case not found.",
+      });
+    }
+
+    const changes = [];
+
+    const oldLawyerIds = [...caseDoc.lawyerIds];
+    const newLawyerIds = caseDoc.lawyerIds.filter(
+      (id) => id.toString() !== userId.toString()
+    );
+
+    if (
+      JSON.stringify(oldLawyerIds.map(String)) !==
+      JSON.stringify(newLawyerIds.map(String))
+    ) {
+      changes.push({
+        field: "lawyerIds",
+        oldValue: oldLawyerIds,
+        newValue: newLawyerIds,
+      });
+      caseDoc.lawyerIds = newLawyerIds;
+    }
+
+    if (
+      caseDoc.primaryLawyerId &&
+      caseDoc.primaryLawyerId.toString() === userId.toString()
+    ) {
+      changes.push({
+        field: "primaryLawyerId",
+        oldValue: caseDoc.primaryLawyerId,
+        newValue: null,
+      });
+      caseDoc.primaryLawyerId = null;
+    }
+
+    caseDoc.updatedBy = req.user._id;
+
+    if (changes.length > 0) {
+      caseDoc.updateHistory.push({
+        updatedBy: req.user._id,
+        updatedAt: new Date(),
+        changes,
+      });
+    }
+
+    await caseDoc.save();
+
+    const updatedCase = await Case.findById(caseId)
+      .populate("lawyerIds", "name email role")
+      .populate("primaryLawyerId", "name email role")
+      .populate("createdBy", "name email role")
+      .populate("updatedBy", "name email role");
+
+    return res.status(200).json({
+      success: true,
+      message: "User unassigned from case successfully.",
+      data: updatedCase,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to unassign user from case.",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getAllUsers,
   getUserById,
@@ -460,4 +595,5 @@ module.exports = {
   resetUserPassword,
   deleteUser,
   assignLawyersToCase,
+  unassignLawyerFromCase,
 };

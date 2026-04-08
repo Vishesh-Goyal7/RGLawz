@@ -1,8 +1,17 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
 import "../styles/CaseManagement.css";
 
-const CaseFormModal = ({ onClose, onSuccess, editingCase, authHeaders }) => {
+const CaseFormModal = ({
+  onClose,
+  onSuccess,
+  editingCase,
+  authHeaders,
+  users = [],
+  currentUser,
+}) => {
+  const isAdmin = currentUser?.role === "admin";
+
   const [formData, setFormData] = useState({
     caseNumber: "",
     caseName: "",
@@ -15,9 +24,16 @@ const CaseFormModal = ({ onClose, onSuccess, editingCase, authHeaders }) => {
     courtName: "",
     courtLocation: "",
     internalNotes: "",
+    lawyerIds: [],
+    primaryLawyerId: "",
   });
 
   const [loading, setLoading] = useState(false);
+
+  const activeUsers = useMemo(
+    () => users.filter((u) => u.isActive),
+    [users]
+  );
 
   useEffect(() => {
     if (editingCase) {
@@ -35,23 +51,64 @@ const CaseFormModal = ({ onClose, onSuccess, editingCase, authHeaders }) => {
         courtName: editingCase.courtName || "",
         courtLocation: editingCase.courtLocation || "",
         internalNotes: editingCase.internalNotes || "",
+        lawyerIds: (editingCase.lawyerIds || []).map((l) => l._id),
+        primaryLawyerId: editingCase.primaryLawyerId?._id || "",
       });
     }
   }, [editingCase]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
     setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
   };
 
+  const handleLawyerSelection = (userId) => {
+    setFormData((prev) => {
+      const exists = prev.lawyerIds.includes(userId);
+
+      const updatedLawyers = exists
+        ? prev.lawyerIds.filter((id) => id !== userId)
+        : [...prev.lawyerIds, userId];
+
+      let updatedPrimary = prev.primaryLawyerId;
+
+      if (exists && prev.primaryLawyerId === userId) {
+        updatedPrimary = "";
+      }
+
+      return {
+        ...prev,
+        lawyerIds: updatedLawyers,
+        primaryLawyerId: updatedPrimary,
+      };
+    });
+  };
+
   const buildPayload = () => {
-    return {
-      ...formData,
+    const payload = {
+      caseNumber: formData.caseNumber,
+      caseName: formData.caseName,
+      petitioner: formData.petitioner,
+      defendant: formData.defendant,
+      caseDescription: formData.caseDescription,
+      caseStatus: formData.caseStatus,
       nextHearingDate: formData.nextHearingDate || null,
+      judgeName: formData.judgeName,
+      courtName: formData.courtName,
+      courtLocation: formData.courtLocation,
+      internalNotes: formData.internalNotes,
     };
+
+    if (isAdmin) {
+      payload.lawyerIds = formData.lawyerIds;
+      payload.primaryLawyerId = formData.primaryLawyerId || null;
+    }
+
+    return payload;
   };
 
   const handleSubmit = async (e) => {
@@ -59,6 +116,17 @@ const CaseFormModal = ({ onClose, onSuccess, editingCase, authHeaders }) => {
 
     try {
       setLoading(true);
+
+      if (isAdmin && formData.primaryLawyerId) {
+        const existsInAssigned = formData.lawyerIds.includes(
+          formData.primaryLawyerId
+        );
+
+        if (!existsInAssigned) {
+          alert("Primary lawyer must also be selected in assigned lawyers.");
+          return;
+        }
+      }
 
       if (editingCase) {
         await api.put(`/cases/${editingCase._id}`, buildPayload(), authHeaders);
@@ -184,6 +252,50 @@ const CaseFormModal = ({ onClose, onSuccess, editingCase, authHeaders }) => {
               onChange={handleChange}
             />
           </div>
+
+          {isAdmin && (
+            <>
+              <div className="form-group full-width">
+                <label>Assign Lawyers</label>
+                <div className="lawyer-checkbox-grid">
+                  {activeUsers.length === 0 ? (
+                    <p className="empty-text">No active users available.</p>
+                  ) : (
+                    activeUsers.map((user) => (
+                      <label className="lawyer-checkbox-item" key={user._id}>
+                        <input
+                          type="checkbox"
+                          checked={formData.lawyerIds.includes(user._id)}
+                          onChange={() => handleLawyerSelection(user._id)}
+                        />
+                        <span>
+                          {user.name} ({user.role})
+                        </span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="form-group full-width">
+                <label>Primary Lawyer</label>
+                <select
+                  name="primaryLawyerId"
+                  value={formData.primaryLawyerId}
+                  onChange={handleChange}
+                >
+                  <option value="">Select Primary Lawyer</option>
+                  {activeUsers
+                    .filter((user) => formData.lawyerIds.includes(user._id))
+                    .map((user) => (
+                      <option key={user._id} value={user._id}>
+                        {user.name} ({user.role})
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </>
+          )}
 
           <div className="form-group full-width">
             <label>Case Description</label>

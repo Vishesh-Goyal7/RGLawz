@@ -151,3 +151,41 @@
     gap: 14px;
   }
 }
+
+.assigned-case-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.assigned-case-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid #eee3dc;
+  border-radius: 12px;
+  background: #fcfaf8;
+}
+
+.assigned-case-card p {
+  color: #555;
+  margin-top: 4px;
+}
+
+.admin-toggle-btn {
+  background: #f4e8ff;
+  color: #7a3fb0;
+  border: none;
+  border-radius: 9px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.admin-toggle-btn:hover {
+  background: #ead7ff;
+}
