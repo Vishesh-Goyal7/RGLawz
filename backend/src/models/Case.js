@@ -1,5 +1,36 @@
 const mongoose = require("mongoose");
 
+const updateHistorySchema = new mongoose.Schema(
+  {
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    updatedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    changes: [
+      {
+        field: {
+          type: String,
+          required: true,
+        },
+        oldValue: {
+          type: mongoose.Schema.Types.Mixed,
+          default: null,
+        },
+        newValue: {
+          type: mongoose.Schema.Types.Mixed,
+          default: null,
+        },
+      },
+    ],
+  },
+  { _id: false }
+);
+
 const caseSchema = new mongoose.Schema(
   {
     caseNumber: {
@@ -83,6 +114,7 @@ const caseSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    updateHistory: [updateHistorySchema],
   },
   {
     timestamps: true,
