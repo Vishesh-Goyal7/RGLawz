@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import api from "../services/api";
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
+import CaseManagement from "../components/CaseManagement";
+import UserManagement from "../components/UserManagement";
 import "../styles/DashboardPage.css";
 
 const DashboardPage = ({ setIsAuthenticated }) => {
@@ -173,10 +175,7 @@ const DashboardPage = ({ setIsAuthenticated }) => {
       case "dashboard":
         return renderDashboardHome();
       case "cases":
-        return renderPlaceholder(
-          "Cases Module",
-          "Case management UI will be added next."
-        );
+        return <CaseManagement />;
       case "hearings":
         return renderPlaceholder(
           "Hearings Module",
@@ -188,10 +187,7 @@ const DashboardPage = ({ setIsAuthenticated }) => {
           "Auto calendar view will be added next."
         );
       case "users":
-        return renderPlaceholder(
-          "User Management",
-          "Admin user management UI will be added next."
-        );
+        return <UserManagement />;
       default:
         return renderDashboardHome();
     }
