@@ -3,6 +3,7 @@ const {
   registerUser,
   loginUser,
   getMe,
+  forgotPassword
 } = require("../controllers/authController");
 const protect = require("../middleware/authMiddleware");
 const adminOnly = require("../middleware/adminMiddleware");
@@ -15,5 +16,6 @@ router.post("/login", loginUser);
 // Private routes
 router.post("/register", protect, adminOnly, registerUser);
 router.get("/me", protect, getMe);
+router.post("/forgot-password", forgotPassword);
 
 module.exports = router;
