@@ -1,0 +1,7 @@
+.env
+node_modules/
+
+# ENV Requirements Format : 
+# PORT
+# MONGO_URI
+# JWT_SECRET
