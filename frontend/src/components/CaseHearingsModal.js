@@ -4,11 +4,20 @@ import HearingDetailModal from "./HearingDetailModal";
 import HearingFormModal from "./HearingFormModal";
 import "../styles/CaseManagement.css";
 
+const formatISTDate = (dateValue) =>
+  new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(dateValue));
+
 const CaseHearingsModal = ({ caseData, authHeaders, onClose }) => {
   const [hearings, setHearings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedHearing, setSelectedHearing] = useState(null);
   const [editingHearing, setEditingHearing] = useState(null);
+  const [isFirstHearingModalOpen, setIsFirstHearingModalOpen] = useState(false);
 
   useEffect(() => {
     fetchHearings();
@@ -29,6 +38,7 @@ const CaseHearingsModal = ({ caseData, authHeaders, onClose }) => {
 
   const closeEditModal = () => {
     setEditingHearing(null);
+    setIsFirstHearingModalOpen(false);
   };
 
   return (
@@ -52,7 +62,15 @@ const CaseHearingsModal = ({ caseData, authHeaders, onClose }) => {
             {loading ? (
               <p className="empty-text">Loading hearings...</p>
             ) : hearings.length === 0 ? (
-              <p className="empty-text">No hearings found for this case.</p>
+              <div className="empty-hearing-state">
+                <p className="empty-text">No hearings found for this case.</p>
+                <button
+                  className="primary-btn"
+                  onClick={() => setIsFirstHearingModalOpen(true)}
+                >
+                  Add First Hearing
+                </button>
+              </div>
             ) : (
               <div className="case-hearing-list">
                 {hearings.map((hearing) => (
@@ -62,10 +80,9 @@ const CaseHearingsModal = ({ caseData, authHeaders, onClose }) => {
                       onClick={() => setSelectedHearing(hearing)}
                     >
                       <div>
-                        <h4>
-                          {new Date(hearing.hearingDate).toLocaleString()}
-                        </h4>
+                        <h4>{formatISTDate(hearing.hearingDate)}</h4>
                         <p>Status: {hearing.hearingStatus}</p>
+                        <p>Lawyer on Date: {hearing.appearedBy || "N/A"}</p>
                       </div>
                       <span className={`status-badge ${hearing.hearingStatus}`}>
                         {hearing.hearingStatus}
@@ -98,6 +115,15 @@ const CaseHearingsModal = ({ caseData, authHeaders, onClose }) => {
       {editingHearing && (
         <HearingFormModal
           editingHearing={editingHearing}
+          authHeaders={authHeaders}
+          onClose={closeEditModal}
+          onSuccess={fetchHearings}
+        />
+      )}
+
+      {isFirstHearingModalOpen && (
+        <HearingFormModal
+          editingHearing={null}
           authHeaders={authHeaders}
           onClose={closeEditModal}
           onSuccess={fetchHearings}

@@ -1,15 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
 import UserFormModal from "./UserFormModal";
-import AssignCaseModal from "./AssignCaseModal";
 import "../styles/UserManagement.css";
 
 const UserManagement = () => {
-  const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+  const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
   const token = localStorage.getItem("token");
 
   const [users, setUsers] = useState([]);
-  const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [searchText, setSearchText] = useState("");
@@ -19,9 +17,6 @@ const UserManagement = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
 
-  const [assignCaseUser, setAssignCaseUser] = useState(null);
-  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
-
   const authHeaders = {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -29,24 +24,17 @@ const UserManagement = () => {
   };
 
   useEffect(() => {
-    if (currentUser.role === "admin") {
-      fetchAll();
-    }
+    fetchUsers();
     // eslint-disable-next-line
   }, []);
 
-  const fetchAll = async () => {
+  const fetchUsers = async () => {
     try {
       setLoading(true);
-      const [usersRes, casesRes] = await Promise.all([
-        api.get("/users", authHeaders),
-        api.get("/cases", authHeaders),
-      ]);
-
-      setUsers(usersRes.data.data || []);
-      setCases(casesRes.data.data || []);
+      const res = await api.get("/users", authHeaders);
+      setUsers(res.data.data || []);
     } catch (error) {
-      console.error("Failed to fetch users module data:", error);
+      console.error("Failed to fetch users:", error);
     } finally {
       setLoading(false);
     }
@@ -62,106 +50,66 @@ const UserManagement = () => {
     setIsFormOpen(true);
   };
 
-  const openAssignModal = (user) => {
-    setAssignCaseUser(user);
-    setIsAssignModalOpen(true);
-  };
-
-  const closeModals = () => {
+  const closeModal = () => {
     setEditingUser(null);
     setIsFormOpen(false);
-    setAssignCaseUser(null);
-    setIsAssignModalOpen(false);
   };
 
-  const handleDeleteUser = async (userId) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this user?"
-    );
+  const handleDelete = async (userId) => {
+    const confirmed = window.confirm("Are you sure you want to delete this user?");
     if (!confirmed) return;
 
     try {
       await api.delete(`/users/${userId}`, authHeaders);
-      await fetchAll();
+      await fetchUsers();
     } catch (error) {
+      console.error("Failed to delete user:", error);
       alert(error.response?.data?.message || "Failed to delete user.");
     }
   };
 
-  const handleToggleActive = async (user) => {
-    try {
-      await api.put(
-        `/users/${user._id}`,
-        {
-          isActive: !user.isActive,
-        },
-        authHeaders
-      );
-      await fetchAll();
-    } catch (error) {
-      alert(error.response?.data?.message || "Failed to update user status.");
-    }
-  };
-
-  const handleToggleAdminRole = async (user) => {
-    if (currentUser._id === user._id) {
-      alert("You cannot change your own admin privileges from here.");
-      return;
-    }
-
-    const targetRole = user.role === "admin" ? "junior" : "admin";
-    const actionText =
-      user.role === "admin"
-        ? "remove admin privileges from"
-        : "grant admin privileges to";
-
-    const confirmed = window.confirm(
-      `Are you sure you want to ${actionText} ${user.name}?`
-    );
-    if (!confirmed) return;
+  const handleResetPassword = async (userId) => {
+    const newPassword = window.prompt("Enter new password for this user:");
+    if (!newPassword) return;
 
     try {
-      await api.put(
-        `/users/${user._id}`,
-        {
-          role: targetRole,
-        },
-        authHeaders
-      );
-      await fetchAll();
+      await api.patch(`/users/${userId}/reset-password`, { newPassword }, authHeaders);
+      alert("Password reset successfully.");
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to update user role.");
+      console.error("Failed to reset password:", error);
+      alert(error.response?.data?.message || "Failed to reset password.");
     }
   };
 
   const filteredUsers = useMemo(() => {
-    return users.filter((user) => {
+    return users.filter((item) => {
       const text = searchText.toLowerCase();
 
       const matchesSearch =
-        user.name?.toLowerCase().includes(text) ||
-        user.email?.toLowerCase().includes(text);
+        item.name?.toLowerCase().includes(text) ||
+        item.email?.toLowerCase().includes(text) ||
+        item.phone?.toLowerCase().includes(text);
 
-      const matchesRole = roleFilter ? user.role === roleFilter : true;
+      const matchesRole = roleFilter ? item.role === roleFilter : true;
+
       const matchesStatus =
-        statusFilter === ""
-          ? true
-          : statusFilter === "active"
-          ? user.isActive
-          : !user.isActive;
+        statusFilter === "active"
+          ? item.isActive === true
+          : statusFilter === "inactive"
+          ? item.isActive === false
+          : true;
 
       return matchesSearch && matchesRole && matchesStatus;
     });
   }, [users, searchText, roleFilter, statusFilter]);
 
-  if (currentUser.role !== "admin") {
+  if (storedUser.role !== "admin") {
     return (
-      <div className="restricted-card">
-        <h2>Restricted Area</h2>
-        <p>
-          You do not have permission to access the Users module. Contact an
-          admin for these privileges.
-        </p>
+      <div className="user-management">
+        <div className="restricted-card">
+          <h2>Access Restricted</h2>
+          <p>You do not have permission to view this section. Please contact an administrator.</p>
+        </div>
       </div>
     );
   }
@@ -171,7 +119,7 @@ const UserManagement = () => {
       <div className="user-toolbar">
         <div>
           <h2>Users</h2>
-          <p>Manage team members, roles, access, and case assignments.</p>
+          <p>Manage team members and their access roles.</p>
         </div>
 
         <button className="primary-btn" onClick={openCreateModal}>
@@ -182,25 +130,19 @@ const UserManagement = () => {
       <div className="user-filters">
         <input
           type="text"
-          placeholder="Search by name or email"
+          placeholder="Search by name, email, or phone"
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
         />
 
-        <select
-          value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value)}
-        >
+        <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
           <option value="">All Roles</option>
           <option value="admin">Admin</option>
           <option value="junior">Junior</option>
         </select>
 
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          <option value="">All Status</option>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="">All Statuses</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
         </select>
@@ -218,76 +160,33 @@ const UserManagement = () => {
                 <tr>
                   <th>Name</th>
                   <th>Email</th>
-                  <th>Role</th>
                   <th>Phone</th>
+                  <th>Role</th>
                   <th>Status</th>
-                  <th>Created At</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map((user) => (
-                  <tr key={user._id}>
-                    <td>{user.name}</td>
-                    <td>{user.email}</td>
+                {filteredUsers.map((item) => (
+                  <tr key={item._id}>
+                    <td>{item.name}</td>
+                    <td>{item.email}</td>
+                    <td>{item.phone || "N/A"}</td>
                     <td>
-                      <span className={`role-badge ${user.role}`}>
-                        {user.role}
-                      </span>
+                      <span className={`role-badge ${item.role}`}>{item.role}</span>
                     </td>
-                    <td>{user.phone || "N/A"}</td>
-                    <td>
-                      <span
-                        className={`status-badge ${
-                          user.isActive ? "active" : "on_hold"
-                        }`}
-                      >
-                        {user.isActive ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-                    <td>{new Date(user.createdAt).toLocaleDateString()}</td>
+                    <td>{item.isActive ? "Active" : "Inactive"}</td>
                     <td>
                       <div className="action-buttons">
-                        <button
-                          className="secondary-btn"
-                          onClick={() => openEditModal(user)}
-                        >
+                        <button className="secondary-btn" onClick={() => openEditModal(item)}>
                           Edit
                         </button>
-
-                        <button
-                          className="history-btn"
-                          onClick={() => openAssignModal(user)}
-                        >
-                          Assign Cases
+                        <button className="secondary-btn" onClick={() => handleResetPassword(item._id)}>
+                          Reset Password
                         </button>
-
-                        {currentUser._id !== user._id && (
-                          <button
-                            className="admin-toggle-btn"
-                            onClick={() => handleToggleAdminRole(user)}
-                          >
-                            {user.role === "admin"
-                              ? "Remove Admin"
-                              : "Make Admin"}
-                          </button>
-                        )}
-
-                        <button
-                          className="secondary-btn"
-                          onClick={() => handleToggleActive(user)}
-                        >
-                          {user.isActive ? "Deactivate" : "Activate"}
+                        <button className="danger-btn" onClick={() => handleDelete(item._id)}>
+                          Delete
                         </button>
-
-                        {currentUser._id !== user._id && (
-                          <button
-                            className="danger-btn"
-                            onClick={() => handleDeleteUser(user._id)}
-                          >
-                            Delete
-                          </button>
-                        )}
                       </div>
                     </td>
                   </tr>
@@ -300,19 +199,9 @@ const UserManagement = () => {
 
       {isFormOpen && (
         <UserFormModal
-          onClose={closeModals}
-          onSuccess={fetchAll}
+          onClose={closeModal}
+          onSuccess={fetchUsers}
           editingUser={editingUser}
-          authHeaders={authHeaders}
-        />
-      )}
-
-      {isAssignModalOpen && assignCaseUser && (
-        <AssignCaseModal
-          onClose={closeModals}
-          onSuccess={fetchAll}
-          selectedUser={assignCaseUser}
-          cases={cases}
           authHeaders={authHeaders}
         />
       )}

@@ -5,16 +5,14 @@ const Sidebar = ({ activeSection, setActiveSection }) => {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   const menuItems = [
-    { key: "dashboard", label: "Dashboard" },
     { key: "cases", label: "Cases" },
     { key: "hearings", label: "Hearings" },
-    { key: "calendar", label: "Calendar" },
     ...(user.role === "admin" ? [{ key: "users", label: "Users" }] : []),
   ];
 
   return (
     <div className="sidebar">
-      <div className="sidebar-logo">Law Firm Manager</div>
+      <div className="sidebar-logo">RG Lawz Manager</div>
 
       <div className="sidebar-menu">
         {menuItems.map((item) => (

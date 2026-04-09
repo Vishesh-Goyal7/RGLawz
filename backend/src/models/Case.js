@@ -54,25 +54,18 @@ const caseSchema = new mongoose.Schema(
       required: [true, "Defendant name is required"],
       trim: true,
     },
+    registrationDate: {
+      type: Date,
+      required: [true, "Registration date is required"],
+    },
     caseDescription: {
       type: String,
       trim: true,
       default: "",
     },
-    lawyerIds: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
-    primaryLawyerId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      default: null,
-    },
     caseStatus: {
       type: String,
-      enum: ["active", "pending", "disposed", "on_hold"],
+      enum: ["active", "decided", "settlement"],
       default: "active",
     },
     nextHearingDate: {
@@ -98,6 +91,17 @@ const caseSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: "",
+    },
+    lawyerIds: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    primaryLawyerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
     },
     latestHearingId: {
       type: mongoose.Schema.Types.ObjectId,

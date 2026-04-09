@@ -39,6 +39,7 @@ const createCase = async (req, res) => {
       caseName,
       petitioner,
       defendant,
+      registrationDate,
       caseDescription,
       lawyerIds,
       primaryLawyerId,
@@ -50,11 +51,11 @@ const createCase = async (req, res) => {
       internalNotes,
     } = req.body;
 
-    if (!caseNumber || !caseName || !petitioner || !defendant) {
+    if (!caseName || !petitioner || !defendant || !registrationDate) {
       return res.status(400).json({
         success: false,
         message:
-          "Case number, case name, petitioner, and defendant are required.",
+          "Case name, petitioner, defendant, and registration date are required.",
       });
     }
 
@@ -109,6 +110,7 @@ const createCase = async (req, res) => {
       defendant: defendant.trim(),
       caseDescription: caseDescription?.trim() || "",
       lawyerIds: lawyerIds || [],
+      registrationDate,
       primaryLawyerId: primaryLawyerId || null,
       caseStatus: caseStatus || "active",
       nextHearingDate: nextHearingDate || null,
@@ -294,9 +296,8 @@ const updateCase = async (req, res) => {
       "caseName",
       "petitioner",
       "defendant",
+      "registrationDate",
       "caseDescription",
-      "lawyerIds",
-      "primaryLawyerId",
       "caseStatus",
       "nextHearingDate",
       "judgeName",
@@ -417,8 +418,6 @@ const updateCase = async (req, res) => {
       },
       { new: true, runValidators: true }
     )
-      .populate("lawyerIds", "name email role")
-      .populate("primaryLawyerId", "name email role")
       .populate("createdBy", "name email role")
       .populate("updatedBy", "name email role")
       .populate("updateHistory.updatedBy", "name email role");

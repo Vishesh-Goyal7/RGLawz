@@ -1,6 +1,25 @@
 import React from "react";
 import "../styles/CaseManagement.css";
 
+const formatISTDate = (dateValue) =>
+  new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(dateValue));
+
+const formatISTDateTime = (dateValue) =>
+  new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(new Date(dateValue));
+
 const HearingDetailModal = ({ hearing, onClose }) => {
   return (
     <div className="modal-overlay">
@@ -21,7 +40,7 @@ const HearingDetailModal = ({ hearing, onClose }) => {
         <div className="hearing-detail-body">
           <div className="hearing-detail-row">
             <strong>Hearing Date:</strong>
-            <span>{new Date(hearing.hearingDate).toLocaleString()}</span>
+            <span>{formatISTDate(hearing.hearingDate)}</span>
           </div>
 
           <div className="hearing-detail-row">
@@ -30,12 +49,27 @@ const HearingDetailModal = ({ hearing, onClose }) => {
           </div>
 
           <div className="hearing-detail-row">
+            <strong>Lawyer on Date:</strong>
+            <span>{hearing.appearedBy || "N/A"}</span>
+          </div>
+
+          <div className="hearing-detail-row">
             <strong>Next Hearing Date:</strong>
             <span>
               {hearing.nextHearingDate
-                ? new Date(hearing.nextHearingDate).toLocaleString()
+                ? formatISTDate(hearing.nextHearingDate)
                 : "N/A"}
             </span>
+          </div>
+
+          <div className="hearing-detail-row">
+            <strong>Created At:</strong>
+            <span>{formatISTDateTime(hearing.createdAt)}</span>
+          </div>
+
+          <div className="hearing-detail-row">
+            <strong>Last Updated At:</strong>
+            <span>{formatISTDateTime(hearing.updatedAt)}</span>
           </div>
 
           <div className="hearing-detail-row vertical">

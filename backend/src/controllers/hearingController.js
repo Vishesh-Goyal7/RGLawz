@@ -2,9 +2,6 @@ const mongoose = require("mongoose");
 const Hearing = require("../models/Hearing");
 const Case = require("../models/Case");
 
-/**
- * Helper: compare fields and prepare update history
- */
 const buildChangeLog = (existingHearing, updates) => {
   const changes = [];
 
@@ -27,23 +24,6 @@ const buildChangeLog = (existingHearing, updates) => {
   return changes;
 };
 
-/**
- * Helper: check if user can access a case
- */
-const canUserAccessCase = async (user, caseId) => {
-  if (user.role === "admin") return true;
-
-  const caseDoc = await Case.findOne({
-    _id: caseId,
-    lawyerIds: user._id,
-  });
-
-  return !!caseDoc;
-};
-
-/**
- * Helper: create upcoming hearing automatically if next hearing date exists
- */
 const ensureUpcomingHearingExists = async (hearingDoc, userId) => {
   if (!hearingDoc.nextHearingDate || !hearingDoc.caseId) return;
 
@@ -58,22 +38,23 @@ const ensureUpcomingHearingExists = async (hearingDoc, userId) => {
   await Hearing.create({
     caseId: hearingDoc.caseId,
     hearingDate: hearingDoc.nextHearingDate,
+    appearedBy: "",
     hearingVerdict: "",
     hearingNotes: "",
     hearingStatus: "upcoming",
     nextHearingDate: null,
-    updatedCaseStatus: "",
-    addedBy: userId,
     createdBy: userId,
     updatedBy: userId,
     updateHistory: [],
   });
 };
 
-/**
- * Helper: sync hearing data back into linked case
- */
-const syncCaseFromHearing = async (caseId, hearingDoc, userId) => {
+const syncCaseFromHearing = async (
+  caseId,
+  hearingDoc,
+  userId,
+  finalCaseStatus = null
+) => {
   const caseToUpdate = await Case.findById(caseId);
   if (!caseToUpdate) return;
 
@@ -82,12 +63,14 @@ const syncCaseFromHearing = async (caseId, hearingDoc, userId) => {
     updatedBy: userId,
   };
 
-  if (hearingDoc.nextHearingDate !== undefined) {
-    caseUpdates.nextHearingDate = hearingDoc.nextHearingDate || null;
-  }
-
-  if (hearingDoc.updatedCaseStatus) {
-    caseUpdates.caseStatus = hearingDoc.updatedCaseStatus;
+  if (hearingDoc.nextHearingDate) {
+    caseUpdates.nextHearingDate = hearingDoc.nextHearingDate;
+    caseUpdates.caseStatus = "active";
+  } else {
+    caseUpdates.nextHearingDate = null;
+    if (finalCaseStatus) {
+      caseUpdates.caseStatus = finalCaseStatus;
+    }
   }
 
   const caseChanges = [];
@@ -128,21 +111,15 @@ const syncCaseFromHearing = async (caseId, hearingDoc, userId) => {
   );
 };
 
-/**
- * @desc    Create a hearing
- * @route   POST /api/hearings
- * @access  Private
- */
 const createHearing = async (req, res) => {
   try {
     const {
       caseId,
       hearingDate,
+      appearedBy,
       hearingVerdict,
       hearingNotes,
-      hearingStatus,
       nextHearingDate,
-      updatedCaseStatus,
     } = req.body;
 
     if (!caseId || !hearingDate) {
@@ -167,40 +144,38 @@ const createHearing = async (req, res) => {
       });
     }
 
-    const canAccess = await canUserAccessCase(req.user, caseId);
-    if (!canAccess) {
-      return res.status(403).json({
+    const existingHearings = await Hearing.countDocuments({ caseId });
+    if (existingHearings > 0) {
+      return res.status(400).json({
         success: false,
-        message: "You are not assigned to this case.",
+        message: "Only the first hearing can be created manually.",
       });
     }
 
     const hearing = await Hearing.create({
       caseId,
       hearingDate,
+      appearedBy: appearedBy?.trim() || "",
       hearingVerdict: hearingVerdict?.trim() || "",
       hearingNotes: hearingNotes?.trim() || "",
-      hearingStatus: hearingStatus || "upcoming",
+      hearingStatus: nextHearingDate ? "done" : "upcoming",
       nextHearingDate: nextHearingDate || null,
-      updatedCaseStatus: updatedCaseStatus || "",
-      addedBy: req.user._id,
       createdBy: req.user._id,
       updatedBy: req.user._id,
       updateHistory: [],
     });
 
-    await syncCaseFromHearing(caseId, hearing, req.user._id);
+    await syncCaseFromHearing(caseId, hearing, req.user._id, null);
     await ensureUpcomingHearingExists(hearing, req.user._id);
 
     const populatedHearing = await Hearing.findById(hearing._id)
       .populate("caseId")
-      .populate("addedBy", "name email role")
       .populate("createdBy", "name email role")
       .populate("updatedBy", "name email role");
 
     return res.status(201).json({
       success: true,
-      message: "Hearing created successfully.",
+      message: "First hearing created successfully.",
       data: populatedHearing,
     });
   } catch (error) {
@@ -212,72 +187,15 @@ const createHearing = async (req, res) => {
   }
 };
 
-/**
- * @desc    Get all hearings with optional filters
- * @route   GET /api/hearings
- * @access  Private
- */
 const getAllHearings = async (req, res) => {
   try {
-    const {
-      caseId,
-      hearingStatus,
-      updatedCaseStatus,
-      hearingDateFrom,
-      hearingDateTo,
-      nextHearingDateFrom,
-      nextHearingDateTo,
-    } = req.query;
+    const { caseId } = req.query;
 
     const filter = {};
-
     if (caseId) filter.caseId = caseId;
-    if (hearingStatus) filter.hearingStatus = hearingStatus;
-    if (updatedCaseStatus) filter.updatedCaseStatus = updatedCaseStatus;
-
-    if (hearingDateFrom || hearingDateTo) {
-      filter.hearingDate = {};
-      if (hearingDateFrom) filter.hearingDate.$gte = new Date(hearingDateFrom);
-      if (hearingDateTo) filter.hearingDate.$lte = new Date(hearingDateTo);
-    }
-
-    if (nextHearingDateFrom || nextHearingDateTo) {
-      filter.nextHearingDate = {};
-      if (nextHearingDateFrom) {
-        filter.nextHearingDate.$gte = new Date(nextHearingDateFrom);
-      }
-      if (nextHearingDateTo) {
-        filter.nextHearingDate.$lte = new Date(nextHearingDateTo);
-      }
-    }
-
-    if (req.user.role !== "admin") {
-      const assignedCases = await Case.find({ lawyerIds: req.user._id }).select("_id");
-      const assignedCaseIds = assignedCases.map((c) => c._id);
-
-      if (caseId) {
-        const requestedAllowed = assignedCaseIds.some(
-          (id) => id.toString() === caseId.toString()
-        );
-
-        if (!requestedAllowed) {
-          return res.status(200).json({
-            success: true,
-            count: 0,
-            message: "Hearings fetched successfully.",
-            data: [],
-          });
-        }
-
-        filter.caseId = caseId;
-      } else {
-        filter.caseId = { $in: assignedCaseIds };
-      }
-    }
 
     const hearings = await Hearing.find(filter)
       .populate("caseId")
-      .populate("addedBy", "name email role")
       .populate("createdBy", "name email role")
       .populate("updatedBy", "name email role")
       .sort({ hearingDate: -1, createdAt: -1 });
@@ -297,11 +215,6 @@ const getAllHearings = async (req, res) => {
   }
 };
 
-/**
- * @desc    Get hearing by ID
- * @route   GET /api/hearings/:id
- * @access  Private
- */
 const getHearingById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -315,7 +228,6 @@ const getHearingById = async (req, res) => {
 
     const hearing = await Hearing.findById(id)
       .populate("caseId")
-      .populate("addedBy", "name email role")
       .populate("createdBy", "name email role")
       .populate("updatedBy", "name email role")
       .populate("updateHistory.updatedBy", "name email role");
@@ -324,14 +236,6 @@ const getHearingById = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Hearing not found.",
-      });
-    }
-
-    const canAccess = await canUserAccessCase(req.user, hearing.caseId._id);
-    if (!canAccess) {
-      return res.status(403).json({
-        success: false,
-        message: "You are not assigned to this case.",
       });
     }
 
@@ -349,14 +253,17 @@ const getHearingById = async (req, res) => {
   }
 };
 
-/**
- * @desc    Update hearing
- * @route   PUT /api/hearings/:id
- * @access  Private
- */
 const updateHearing = async (req, res) => {
   try {
     const { id } = req.params;
+    const {
+      hearingDate,
+      appearedBy,
+      hearingVerdict,
+      hearingNotes,
+      nextHearingDate,
+      finalCaseStatus,
+    } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
@@ -374,105 +281,76 @@ const updateHearing = async (req, res) => {
       });
     }
 
-    const canAccessExistingCase = await canUserAccessCase(req.user, existingHearing.caseId);
-    if (!canAccessExistingCase) {
-      return res.status(403).json({
-        success: false,
-        message: "You are not assigned to this case.",
-      });
-    }
-
-    const allowedFields = [
-      "caseId",
-      "hearingDate",
-      "hearingVerdict",
-      "hearingNotes",
-      "hearingStatus",
-      "nextHearingDate",
-      "updatedCaseStatus",
-    ];
-
-    const updates = {};
-
-    allowedFields.forEach((field) => {
-      if (req.body[field] !== undefined) {
-        updates[field] = req.body[field];
-      }
-    });
-
-    if (Object.keys(updates).length === 0) {
+    if (!nextHearingDate && !finalCaseStatus) {
       return res.status(400).json({
         success: false,
-        message: "No valid fields provided for update.",
+        message:
+          "If no next hearing date is provided, you must mark the case as decided or settlement.",
       });
     }
 
-    if (updates.caseId) {
-      if (!mongoose.Types.ObjectId.isValid(updates.caseId)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid case ID.",
-        });
-      }
-
-      const linkedCase = await Case.findById(updates.caseId);
-      if (!linkedCase) {
-        return res.status(404).json({
-          success: false,
-          message: "Linked case not found.",
-        });
-      }
-
-      const canAccessNewCase = await canUserAccessCase(req.user, updates.caseId);
-      if (!canAccessNewCase) {
-        return res.status(403).json({
-          success: false,
-          message: "You are not assigned to the target case.",
-        });
-      }
+    if (
+      !nextHearingDate &&
+      !["decided", "settlement"].includes(finalCaseStatus)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Final case status must be either decided or settlement when next hearing date is not provided.",
+      });
     }
 
-    if (updates.hearingVerdict !== undefined) {
-      updates.hearingVerdict = updates.hearingVerdict?.trim() || "";
-    }
-
-    if (updates.hearingNotes !== undefined) {
-      updates.hearingNotes = updates.hearingNotes?.trim() || "";
-    }
+    const updates = {
+      hearingDate: hearingDate ?? existingHearing.hearingDate,
+      appearedBy:
+        appearedBy !== undefined
+          ? appearedBy?.trim() || ""
+          : existingHearing.appearedBy,
+      hearingVerdict:
+        hearingVerdict !== undefined
+          ? hearingVerdict?.trim() || ""
+          : existingHearing.hearingVerdict,
+      hearingNotes:
+        hearingNotes !== undefined
+          ? hearingNotes?.trim() || ""
+          : existingHearing.hearingNotes,
+      nextHearingDate: nextHearingDate || null,
+      hearingStatus: "done",
+      updatedBy: req.user._id,
+    };
 
     const changes = buildChangeLog(existingHearing.toObject(), updates);
-
-    if (changes.length === 0) {
-      return res.status(200).json({
-        success: true,
-        message: "No changes detected. Hearing remains unchanged.",
-        data: existingHearing,
-      });
-    }
-
-    updates.updatedBy = req.user._id;
 
     const updatedHearing = await Hearing.findByIdAndUpdate(
       id,
       {
         $set: updates,
-        $push: {
-          updateHistory: {
-            updatedBy: req.user._id,
-            updatedAt: new Date(),
-            changes,
-          },
-        },
+        ...(changes.length > 0
+          ? {
+              $push: {
+                updateHistory: {
+                  updatedBy: req.user._id,
+                  updatedAt: new Date(),
+                  changes,
+                },
+              },
+            }
+          : {}),
       },
       { new: true, runValidators: true }
     )
       .populate("caseId")
-      .populate("addedBy", "name email role")
       .populate("createdBy", "name email role")
       .populate("updatedBy", "name email role")
       .populate("updateHistory.updatedBy", "name email role");
 
-    await syncCaseFromHearing(updatedHearing.caseId._id, updatedHearing, req.user._id);
+    await syncCaseFromHearing(
+      updatedHearing.caseId._id,
+      updatedHearing,
+      req.user._id,
+      updates.nextHearingDate ? null : finalCaseStatus
+    );
+
     await ensureUpcomingHearingExists(updatedHearing, req.user._id);
 
     return res.status(200).json({
@@ -489,11 +367,6 @@ const updateHearing = async (req, res) => {
   }
 };
 
-/**
- * @desc    Delete hearing
- * @route   DELETE /api/hearings/:id
- * @access  Private (Admin only)
- */
 const deleteHearing = async (req, res) => {
   try {
     const { id } = req.params;
@@ -515,62 +388,6 @@ const deleteHearing = async (req, res) => {
     }
 
     await Hearing.findByIdAndDelete(id);
-
-    const remainingLatestHearing = await Hearing.findOne({ caseId: hearing.caseId })
-      .sort({ hearingDate: -1, createdAt: -1 });
-
-    const caseUpdates = {
-      latestHearingId: remainingLatestHearing ? remainingLatestHearing._id : null,
-      nextHearingDate: remainingLatestHearing
-        ? remainingLatestHearing.nextHearingDate || null
-        : null,
-      updatedBy: req.user._id,
-    };
-
-    if (remainingLatestHearing && remainingLatestHearing.updatedCaseStatus) {
-      caseUpdates.caseStatus = remainingLatestHearing.updatedCaseStatus;
-    }
-
-    const linkedCase = await Case.findById(hearing.caseId);
-
-    if (linkedCase) {
-      const caseChanges = [];
-
-      Object.keys(caseUpdates).forEach((field) => {
-        const oldValue = linkedCase[field];
-        const newValue = caseUpdates[field];
-
-        const oldSerialized = JSON.stringify(oldValue ?? null);
-        const newSerialized = JSON.stringify(newValue ?? null);
-
-        if (oldSerialized !== newSerialized) {
-          caseChanges.push({
-            field,
-            oldValue,
-            newValue,
-          });
-        }
-      });
-
-      await Case.findByIdAndUpdate(
-        hearing.caseId,
-        {
-          $set: caseUpdates,
-          ...(caseChanges.length > 0
-            ? {
-                $push: {
-                  updateHistory: {
-                    updatedBy: req.user._id,
-                    updatedAt: new Date(),
-                    changes: caseChanges,
-                  },
-                },
-              }
-            : {}),
-        },
-        { new: true, runValidators: true }
-      );
-    }
 
     return res.status(200).json({
       success: true,

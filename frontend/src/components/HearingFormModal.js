@@ -2,15 +2,24 @@ import React, { useEffect, useState } from "react";
 import api from "../services/api";
 import "../styles/HearingManagement.css";
 
+const formatForDateInput = (dateString) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 const HearingFormModal = ({ onClose, onSuccess, editingHearing, authHeaders }) => {
   const [formData, setFormData] = useState({
     caseId: "",
     hearingDate: "",
-    hearingStatus: "upcoming",
+    appearedBy: "",
     hearingVerdict: "",
     nextHearingDate: "",
     hearingNotes: "",
-    updatedCaseStatus: "",
+    finalCaseStatus: "",
   });
 
   const [accessibleCases, setAccessibleCases] = useState([]);
@@ -21,34 +30,20 @@ const HearingFormModal = ({ onClose, onSuccess, editingHearing, authHeaders }) =
     // eslint-disable-next-line
   }, []);
 
-  const formatForDateTimeLocal = (dateString) => {
-    if (!dateString) return "";
-
-    const date = new Date(dateString);
-
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  };
-
   useEffect(() => {
     if (editingHearing) {
       setFormData({
         caseId: editingHearing.caseId?._id || "",
         hearingDate: editingHearing.hearingDate
-        ? formatForDateTimeLocal(editingHearing.hearingDate)
-        : "",
-        hearingStatus: editingHearing.hearingStatus || "upcoming",
+          ? formatForDateInput(editingHearing.hearingDate)
+          : "",
+        appearedBy: editingHearing.appearedBy || "",
         hearingVerdict: editingHearing.hearingVerdict || "",
         nextHearingDate: editingHearing.nextHearingDate
-        ? formatForDateTimeLocal(editingHearing.nextHearingDate)
-        : "",
+          ? formatForDateInput(editingHearing.nextHearingDate)
+          : "",
         hearingNotes: editingHearing.hearingNotes || "",
-        updatedCaseStatus: editingHearing.updatedCaseStatus || "",
+        finalCaseStatus: "",
       });
     }
   }, [editingHearing]);
@@ -58,13 +53,12 @@ const HearingFormModal = ({ onClose, onSuccess, editingHearing, authHeaders }) =
       const res = await api.get("/cases", authHeaders);
       setAccessibleCases(res.data.data || []);
     } catch (error) {
-      console.error("Failed to fetch accessible cases:", error);
+      console.error("Failed to fetch cases:", error);
     }
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -74,11 +68,11 @@ const HearingFormModal = ({ onClose, onSuccess, editingHearing, authHeaders }) =
   const buildPayload = () => ({
     caseId: formData.caseId,
     hearingDate: formData.hearingDate,
-    hearingStatus: formData.hearingStatus,
+    appearedBy: formData.appearedBy,
     hearingVerdict: formData.hearingVerdict,
     nextHearingDate: formData.nextHearingDate || null,
     hearingNotes: formData.hearingNotes,
-    updatedCaseStatus: formData.updatedCaseStatus || "",
+    finalCaseStatus: formData.nextHearingDate ? null : formData.finalCaseStatus,
   });
 
   const handleSubmit = async (e) => {
@@ -86,6 +80,11 @@ const HearingFormModal = ({ onClose, onSuccess, editingHearing, authHeaders }) =
 
     try {
       setLoading(true);
+
+      if (!formData.nextHearingDate && !formData.finalCaseStatus) {
+        alert("If no next hearing date is entered, select Decided or Settlement.");
+        return;
+      }
 
       if (editingHearing) {
         await api.put(
@@ -111,7 +110,7 @@ const HearingFormModal = ({ onClose, onSuccess, editingHearing, authHeaders }) =
     <div className="modal-overlay">
       <div className="modal-card large-modal">
         <div className="modal-header">
-          <h3>{editingHearing ? "Update Hearing" : "Add Hearing"}</h3>
+          <h3>{editingHearing ? "Update Hearing" : "Add First Hearing"}</h3>
           <button className="close-btn" onClick={onClose}>
             ×
           </button>
@@ -137,9 +136,9 @@ const HearingFormModal = ({ onClose, onSuccess, editingHearing, authHeaders }) =
           </div>
 
           <div className="form-group">
-            <label>Hearing Date & Time</label>
+            <label>Hearing Date</label>
             <input
-              type="datetime-local"
+              type="date"
               name="hearingDate"
               value={formData.hearingDate}
               onChange={handleChange}
@@ -148,51 +147,49 @@ const HearingFormModal = ({ onClose, onSuccess, editingHearing, authHeaders }) =
           </div>
 
           <div className="form-group">
-            <label>Hearing Status</label>
-            <select
-              name="hearingStatus"
-              value={formData.hearingStatus}
+            <label>Lawyer on Date</label>
+            <input
+              type="text"
+              name="appearedBy"
+              value={formData.appearedBy}
               onChange={handleChange}
-            >
-              <option value="upcoming">Upcoming</option>
-              <option value="done">Done</option>
-              <option value="adjourned">Adjourned</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
+              placeholder="Who handled this date?"
+              required={!!editingHearing}
+            />
           </div>
 
           <div className="form-group">
-            <label>Updated Case Status</label>
-            <select
-              name="updatedCaseStatus"
-              value={formData.updatedCaseStatus}
+            <label>Next Hearing Date</label>
+            <input
+              type="date"
+              name="nextHearingDate"
+              value={formData.nextHearingDate}
               onChange={handleChange}
-            >
-              <option value="">No Change</option>
-              <option value="active">Active</option>
-              <option value="pending">Pending</option>
-              <option value="disposed">Disposed</option>
-              <option value="on_hold">On Hold</option>
-            </select>
+            />
           </div>
 
+          {!formData.nextHearingDate && (
+            <div className="form-group">
+              <label>Case Result</label>
+              <select
+                name="finalCaseStatus"
+                value={formData.finalCaseStatus}
+                onChange={handleChange}
+              >
+                <option value="">Select Result</option>
+                <option value="decided">Decided</option>
+                <option value="settlement">Settlement</option>
+              </select>
+            </div>
+          )}
+
           <div className="form-group full-width">
-            <label>Current Verdict</label>
+            <label>Verdict</label>
             <textarea
               name="hearingVerdict"
               value={formData.hearingVerdict}
               onChange={handleChange}
               rows="3"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Next Hearing Date & Time</label>
-            <input
-              type="datetime-local"
-              name="nextHearingDate"
-              value={formData.nextHearingDate}
-              onChange={handleChange}
             />
           </div>
 
@@ -215,7 +212,7 @@ const HearingFormModal = ({ onClose, onSuccess, editingHearing, authHeaders }) =
                 ? "Saving..."
                 : editingHearing
                 ? "Update Hearing"
-                : "Create Hearing"}
+                : "Create First Hearing"}
             </button>
           </div>
         </form>

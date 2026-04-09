@@ -520,3 +520,79 @@
   display: flex;
   justify-content: flex-end;
 }
+
+.empty-hearing-state {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.cases-table-card {
+  background: #ffffff;
+  border: 1px solid #eee3dc;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.cases-table-card table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+.cases-table-card thead {
+  background: #f5ece6;
+}
+
+.cases-table-card th,
+.cases-table-card td {
+  text-align: left;
+  padding: 12px 14px;
+  border-bottom: 1px solid #f0e4dd;
+  font-size: 0.94rem;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.cases-table-card th {
+  color: #6f4a36;
+  font-weight: 700;
+}
+
+.cases-table-card td {
+  color: #333;
+}
+
+.cases-table-card th:last-child,
+.cases-table-card td:last-child {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.hearing-link-btn,
+.danger-btn {
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .cases-table-card th,
+  .cases-table-card td {
+    padding: 10px 12px;
+    font-size: 0.9rem;
+  }
+}

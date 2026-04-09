@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
 import CaseFormModal from "./CaseFormModal";
-import CaseHistoryModal from "./CaseHistoryModal";
 import CaseHearingsModal from "./CaseHearingsModal";
 import "../styles/CaseManagement.css";
 
@@ -18,11 +17,6 @@ const CaseManagement = () => {
   const [courtFilter, setCourtFilter] = useState("");
 
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingCase, setEditingCase] = useState(null);
-
-  const [historyCase, setHistoryCase] = useState(null);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-
   const [hearingsCase, setHearingsCase] = useState(null);
   const [isHearingsOpen, setIsHearingsOpen] = useState(false);
 
@@ -34,9 +28,6 @@ const CaseManagement = () => {
 
   useEffect(() => {
     fetchCases();
-    if (storedUser.role === "admin") {
-      fetchUsers();
-    }
     // eslint-disable-next-line
   }, []);
 
@@ -62,24 +53,7 @@ const CaseManagement = () => {
   };
 
   const openCreateModal = () => {
-    setEditingCase(null);
     setIsFormOpen(true);
-  };
-
-  const openEditModal = (caseItem) => {
-    setEditingCase(caseItem);
-    setIsFormOpen(true);
-  };
-
-  const openHistoryModal = async (caseItem) => {
-    try {
-      const res = await api.get(`/cases/${caseItem._id}`, authHeaders);
-      setHistoryCase(res.data.data);
-      setIsHistoryOpen(true);
-    } catch (error) {
-      console.error("Failed to fetch case history:", error);
-      alert("Failed to load case history.");
-    }
   };
 
   const openHearingsModal = (caseItem) => {
@@ -89,9 +63,6 @@ const CaseManagement = () => {
 
   const closeModals = () => {
     setIsFormOpen(false);
-    setEditingCase(null);
-    setIsHistoryOpen(false);
-    setHistoryCase(null);
     setIsHearingsOpen(false);
     setHearingsCase(null);
   };
@@ -138,7 +109,7 @@ const CaseManagement = () => {
       <div className="case-toolbar">
         <div className="case-toolbar-left">
           <h2>Cases</h2>
-          <p>Manage all case records and track their history.</p>
+          <p>Manage registered cases and track their hearings.</p>
         </div>
 
         <div className="case-toolbar-right">
@@ -186,15 +157,12 @@ const CaseManagement = () => {
               <thead>
                 <tr>
                   <th>Case Number</th>
-                  <th>Case Name</th>
                   <th>Petitioner</th>
                   <th>Defendant</th>
-                  <th>Status</th>
                   <th>Court</th>
-                  <th>Assigned Lawyers</th>
-                  <th>Primary Lawyer</th>
+                  <th>Judge Name</th>
+                  <th>Last Hearing</th>
                   <th>Next Hearing</th>
-                  <th>Updated By</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -202,43 +170,32 @@ const CaseManagement = () => {
                 {filteredCases.map((item) => (
                   <tr key={item._id}>
                     <td>{item.caseNumber}</td>
-                    <td>{item.caseName}</td>
                     <td>{item.petitioner}</td>
                     <td>{item.defendant}</td>
-                    <td>
-                      <span className={`status-badge ${item.caseStatus}`}>
-                        {item.caseStatus}
-                      </span>
-                    </td>
                     <td>{item.courtName || "N/A"}</td>
+                    <td>{item.judgeName || "N/A"}</td>
                     <td>
-                      {(item.lawyerIds || []).length > 0
-                        ? item.lawyerIds.map((l) => l.name).join(", ")
-                        : "Unassigned"}
-                    </td>
-                    <td>{item.primaryLawyerId?.name || "N/A"}</td>
-                    <td>
-                      {item.nextHearingDate
-                        ? new Date(item.nextHearingDate).toLocaleDateString()
+                      {item.latestHearingId?.hearingDate
+                        ? new Intl.DateTimeFormat("en-IN", {
+                            timeZone: "Asia/Kolkata",
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          }).format(new Date(item.latestHearingId.hearingDate))
                         : "N/A"}
                     </td>
-                    <td>{item.updatedBy?.name || "N/A"}</td>
+                    <td>
+                      {item.nextHearingDate
+                        ? new Intl.DateTimeFormat("en-IN", {
+                            timeZone: "Asia/Kolkata",
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          }).format(new Date(item.nextHearingDate))
+                        : "N/A"}
+                    </td>
                     <td>
                       <div className="action-buttons">
-                        <button
-                          className="secondary-btn"
-                          onClick={() => openEditModal(item)}
-                        >
-                          Edit
-                        </button>
-
-                        <button
-                          className="history-btn"
-                          onClick={() => openHistoryModal(item)}
-                        >
-                          History
-                        </button>
-
                         <button
                           className="hearing-link-btn"
                           onClick={() => openHearingsModal(item)}
@@ -268,15 +225,9 @@ const CaseManagement = () => {
         <CaseFormModal
           onClose={closeModals}
           onSuccess={fetchCases}
-          editingCase={editingCase}
+          editingCase={null}
           authHeaders={authHeaders}
-          users={users}
-          currentUser={storedUser}
         />
-      )}
-
-      {isHistoryOpen && historyCase && (
-        <CaseHistoryModal caseData={historyCase} onClose={closeModals} />
       )}
 
       {isHearingsOpen && hearingsCase && (

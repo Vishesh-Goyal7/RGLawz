@@ -42,6 +42,11 @@ const hearingSchema = new mongoose.Schema(
       type: Date,
       required: [true, "Hearing date is required"],
     },
+    appearedBy: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     hearingVerdict: {
       type: String,
       trim: true,
@@ -54,22 +59,12 @@ const hearingSchema = new mongoose.Schema(
     },
     hearingStatus: {
       type: String,
-      enum: ["upcoming", "done", "adjourned", "cancelled"],
+      enum: ["upcoming", "done"],
       default: "upcoming",
     },
     nextHearingDate: {
       type: Date,
       default: null,
-    },
-    updatedCaseStatus: {
-      type: String,
-      enum: ["active", "pending", "disposed", "on_hold", ""],
-      default: "",
-    },
-    addedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,

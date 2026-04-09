@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import AuthPage from "./pages/AuthPage";
-import DashboardPage from "./pages/DashboardPage";
+import WorkspacePage from "./pages/WorkspacePage";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -11,7 +11,7 @@ function App() {
   }, []);
 
   return isAuthenticated ? (
-    <DashboardPage setIsAuthenticated={setIsAuthenticated} />
+    <WorkspacePage setIsAuthenticated={setIsAuthenticated} />
   ) : (
     <AuthPage setIsAuthenticated={setIsAuthenticated} />
   );

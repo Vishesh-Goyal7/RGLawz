@@ -64,6 +64,53 @@
   border-radius: 14px;
   padding: 18px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+.users-table-card .table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.users-table-card table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+.users-table-card thead {
+  background: #f5ece6;
+}
+
+.users-table-card th,
+.users-table-card td {
+  text-align: left;
+  padding: 12px 14px;
+  border-bottom: 1px solid #f0e4dd;
+  font-size: 0.94rem;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.users-table-card th {
+  color: #6f4a36;
+  font-weight: 700;
+}
+
+.users-table-card td {
+  color: #333;
+}
+
+.users-table-card th:last-child,
+.users-table-card td:last-child {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.empty-text {
+  color: #888;
+  padding: 20px 0;
+  text-align: center;
 }
 
 .user-form {
