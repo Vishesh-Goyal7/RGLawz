@@ -2,47 +2,66 @@ import React, { useEffect, useState } from "react";
 import api from "../services/api";
 import "../styles/CaseManagement.css";
 
+const todayISO = () => new Date().toISOString().split("T")[0];
+
 const CaseFormModal = ({
   onClose,
   onSuccess,
   editingCase,
   authHeaders,
 }) => {
+  const [nextRegNumber, setNextRegNumber] = useState(null);
+
   const [formData, setFormData] = useState({
     caseNumber: "",
-    caseName: "",
-    petitioner: "",
-    defendant: "",
-    registrationDate: "",
-    caseDescription: "",
-    caseStatus: "active",
-    nextHearingDate: "",
     judgeName: "",
     courtName: "",
     courtLocation: "",
+    petitioner: "",
+    defendant: "",
+    ourClient: "petitioner",
+    previousHearingDate: "",
+    caseDescription: "",
+    caseStatus: "active",
+    nextHearingDate: "",
     internalNotes: "",
   });
 
   const [loading, setLoading] = useState(false);
 
+  // For new cases, fetch next registration number
+  useEffect(() => {
+    if (!editingCase) {
+      api
+        .get("/cases/next-number", authHeaders)
+        .then((res) => setNextRegNumber(res.data.data.nextNumber))
+        .catch(() => setNextRegNumber("—"));
+    }
+  // eslint-disable-next-line
+  }, []);
+
   useEffect(() => {
     if (editingCase) {
+      setNextRegNumber(editingCase.registrationNumber ?? "—");
       setFormData({
         caseNumber: editingCase.caseNumber || "",
-        caseName: editingCase.caseName || "",
+        judgeName: editingCase.judgeName || "",
+        courtName: editingCase.courtName || "",
+        courtLocation: editingCase.courtLocation || "",
         petitioner: editingCase.petitioner || "",
         defendant: editingCase.defendant || "",
+        ourClient: editingCase.ourClient || "petitioner",
+        previousHearingDate: editingCase.previousHearingDate
+          ? new Date(editingCase.previousHearingDate).toISOString().split("T")[0]
+          : "",
         registrationDate: editingCase.registrationDate
           ? new Date(editingCase.registrationDate).toISOString().split("T")[0]
-          : "",
+          : todayISO(),
         caseDescription: editingCase.caseDescription || "",
         caseStatus: editingCase.caseStatus || "active",
         nextHearingDate: editingCase.nextHearingDate
           ? new Date(editingCase.nextHearingDate).toISOString().split("T")[0]
           : "",
-        judgeName: editingCase.judgeName || "",
-        courtName: editingCase.courtName || "",
-        courtLocation: editingCase.courtLocation || "",
         internalNotes: editingCase.internalNotes || "",
       });
     }
@@ -50,25 +69,32 @@ const CaseFormModal = ({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+  const buildCaseName = () => {
+    const p = formData.petitioner.trim();
+    const d = formData.defendant.trim();
+    if (p && d) return `${p} V/S ${d}`;
+    return p || d || "";
   };
 
   const buildPayload = () => ({
     caseNumber: formData.caseNumber,
-    caseName: formData.caseName,
-    petitioner: formData.petitioner,
-    defendant: formData.defendant,
-    registrationDate: formData.registrationDate,
-    caseDescription: formData.caseDescription,
-    caseStatus: formData.caseStatus,
-    nextHearingDate: formData.nextHearingDate || null,
+    caseName: buildCaseName(),
     judgeName: formData.judgeName,
     courtName: formData.courtName,
     courtLocation: formData.courtLocation,
+    petitioner: formData.petitioner,
+    defendant: formData.defendant,
+    ourClient: formData.ourClient,
+    previousHearingDate: formData.previousHearingDate || null,
+    registrationDate: editingCase
+      ? editingCase.registrationDate
+      : todayISO(),
+    caseDescription: formData.caseDescription,
+    caseStatus: formData.caseStatus,
+    nextHearingDate: formData.nextHearingDate || null,
     internalNotes: formData.internalNotes,
   });
 
@@ -94,6 +120,12 @@ const CaseFormModal = ({
     }
   };
 
+  const displayRegDate = editingCase
+    ? (editingCase.registrationDate
+        ? new Date(editingCase.registrationDate).toISOString().split("T")[0]
+        : todayISO())
+    : todayISO();
+
   return (
     <div className="modal-overlay">
       <div className="modal-card large-modal">
@@ -105,31 +137,127 @@ const CaseFormModal = ({
         </div>
 
         <form className="case-form-grid" onSubmit={handleSubmit}>
+          {/* Row 1: Reg Number + Reg Date */}
           <div className="form-group">
-            <label>Case Number</label>
-            <input type="text" name="caseNumber" value={formData.caseNumber} onChange={handleChange} required />
-          </div>
-
-          <div className="form-group">
-            <label>Case Name</label>
-            <input type="text" name="caseName" value={formData.caseName} onChange={handleChange} required />
-          </div>
-
-          <div className="form-group">
-            <label>Petitioner</label>
-            <input type="text" name="petitioner" value={formData.petitioner} onChange={handleChange} required />
-          </div>
-
-          <div className="form-group">
-            <label>Defendant</label>
-            <input type="text" name="defendant" value={formData.defendant} onChange={handleChange} required />
+            <label>Our Registration Number</label>
+            <input
+              type="text"
+              value={nextRegNumber !== null ? nextRegNumber : "Loading…"}
+              readOnly
+              className="readonly-input"
+            />
           </div>
 
           <div className="form-group">
             <label>Registration Date</label>
-            <input type="date" name="registrationDate" value={formData.registrationDate} onChange={handleChange} required />
+            <input
+              type="date"
+              value={displayRegDate}
+              readOnly
+              className="readonly-input"
+            />
           </div>
 
+          {/* Row 2: Judge Name + Court Room Number */}
+          <div className="form-group">
+            <label>Judge Name</label>
+            <input
+              type="text"
+              name="judgeName"
+              value={formData.judgeName}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Court Room Number</label>
+            <input
+              type="text"
+              name="courtName"
+              value={formData.courtName}
+              onChange={handleChange}
+            />
+          </div>
+
+          {/* Row 3: Court Location + Court Case Number */}
+          <div className="form-group">
+            <label>Court Location</label>
+            <input
+              type="text"
+              name="courtLocation"
+              value={formData.courtLocation}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Court Case Number</label>
+            <input
+              type="text"
+              name="caseNumber"
+              value={formData.caseNumber}
+              onChange={handleChange}
+            />
+          </div>
+
+          {/* Row 4: Petitioner + Defendant */}
+          <div className="form-group">
+            <label>
+              Petitioner
+              {formData.ourClient === "petitioner" && (
+                <span className="required-mark"> *</span>
+              )}
+            </label>
+            <input
+              type="text"
+              name="petitioner"
+              value={formData.petitioner}
+              onChange={handleChange}
+              required={formData.ourClient === "petitioner"}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>
+              Defendant
+              {formData.ourClient === "defendant" && (
+                <span className="required-mark"> *</span>
+              )}
+            </label>
+            <input
+              type="text"
+              name="defendant"
+              value={formData.defendant}
+              onChange={handleChange}
+              required={formData.ourClient === "defendant"}
+            />
+          </div>
+
+          {/* Row 5: Previous Date + Our Client */}
+          <div className="form-group">
+            <label>Previous Date</label>
+            <input
+              type="date"
+              name="previousHearingDate"
+              value={formData.previousHearingDate}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Our Client</label>
+            <select
+              name="ourClient"
+              value={formData.ourClient}
+              onChange={handleChange}
+              required
+            >
+              <option value="petitioner">Petitioner</option>
+              <option value="defendant">Defendant</option>
+            </select>
+          </div>
+
+          {/* Row 6: Case Status */}
           <div className="form-group">
             <label>Case Status</label>
             <select name="caseStatus" value={formData.caseStatus} onChange={handleChange}>
@@ -139,34 +267,35 @@ const CaseFormModal = ({
             </select>
           </div>
 
+          {/* Row 7: Next Hearing Date */}
           <div className="form-group">
             <label>Next Hearing Date</label>
-            <input type="date" name="nextHearingDate" value={formData.nextHearingDate} onChange={handleChange} />
-          </div>
-
-          <div className="form-group">
-            <label>Judge Name</label>
-            <input type="text" name="judgeName" value={formData.judgeName} onChange={handleChange} />
-          </div>
-
-          <div className="form-group">
-            <label>Court Name</label>
-            <input type="text" name="courtName" value={formData.courtName} onChange={handleChange} />
-          </div>
-
-          <div className="form-group">
-            <label>Court Location</label>
-            <input type="text" name="courtLocation" value={formData.courtLocation} onChange={handleChange} />
+            <input
+              type="date"
+              name="nextHearingDate"
+              value={formData.nextHearingDate}
+              onChange={handleChange}
+            />
           </div>
 
           <div className="form-group full-width">
             <label>Case Description</label>
-            <textarea name="caseDescription" value={formData.caseDescription} onChange={handleChange} rows="3" />
+            <textarea
+              name="caseDescription"
+              value={formData.caseDescription}
+              onChange={handleChange}
+              rows="3"
+            />
           </div>
 
           <div className="form-group full-width">
             <label>Internal Notes</label>
-            <textarea name="internalNotes" value={formData.internalNotes} onChange={handleChange} rows="3" />
+            <textarea
+              name="internalNotes"
+              value={formData.internalNotes}
+              onChange={handleChange}
+              rows="3"
+            />
           </div>
 
           <div className="modal-actions full-width">

@@ -4,6 +4,7 @@ import Topbar from "../components/Topbar";
 import CaseManagement from "../components/CaseManagement";
 import HearingManagement from "../components/HearingManagement";
 import UserManagement from "../components/UserManagement";
+import CauseList from "../components/CauseList";
 import "../styles/DashboardPage.css";
 
 const WorkspacePage = ({ setIsAuthenticated }) => {
@@ -13,6 +14,8 @@ const WorkspacePage = ({ setIsAuthenticated }) => {
     switch (activeSection) {
       case "cases":
         return <CaseManagement />;
+      case "causeList":
+        return <CauseList />;
       case "hearings":
         return <HearingManagement />;
       case "users":

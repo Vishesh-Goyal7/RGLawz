@@ -33,30 +33,44 @@ const updateHistorySchema = new mongoose.Schema(
 
 const caseSchema = new mongoose.Schema(
   {
+    registrationNumber: {
+      type: Number,
+      unique: true,
+      required: [true, "Registration number is required"],
+    },
     caseNumber: {
       type: String,
-      required: [true, "Case number is required"],
       trim: true,
       unique: true,
+      sparse: true,   // only indexes docs where the field is actually present
     },
     caseName: {
       type: String,
-      required: [true, "Case name is required"],
       trim: true,
+      default: "",
     },
     petitioner: {
       type: String,
-      required: [true, "Petitioner name is required"],
       trim: true,
+      default: "",
     },
     defendant: {
       type: String,
-      required: [true, "Defendant name is required"],
       trim: true,
+      default: "",
+    },
+    ourClient: {
+      type: String,
+      enum: ["petitioner", "defendant"],
+      required: [true, "Our client (petitioner or defendant) is required"],
     },
     registrationDate: {
       type: Date,
-      required: [true, "Registration date is required"],
+      default: null,
+    },
+    previousHearingDate: {
+      type: Date,
+      default: null,
     },
     caseDescription: {
       type: String,

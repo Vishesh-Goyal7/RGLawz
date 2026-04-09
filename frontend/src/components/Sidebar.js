@@ -6,6 +6,7 @@ const Sidebar = ({ activeSection, setActiveSection }) => {
 
   const menuItems = [
     { key: "cases", label: "Cases" },
+    { key: "causeList", label: "Cause List" },
     { key: "hearings", label: "Hearings" },
     ...(user.role === "admin" ? [{ key: "users", label: "Users" }] : []),
   ];

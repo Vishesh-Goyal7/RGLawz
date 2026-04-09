@@ -8,10 +8,27 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  height: 100vh;
 }
 
 .dashboard-content {
   padding: 24px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* let cause-list fill the content area; other sections scroll naturally */
+.dashboard-content > * {
+  flex-shrink: 0;
+}
+
+.dashboard-content > .cause-list {
+  flex: 1;
+  min-height: 0;
 }
 
 .loading-text,

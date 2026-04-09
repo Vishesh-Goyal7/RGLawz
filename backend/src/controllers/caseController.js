@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Case = require("../models/Case");
 const User = require("../models/User");
+const Hearing = require("../models/Hearing");
 
 /**
  * Helper: compare fields and prepare update history
@@ -28,6 +29,32 @@ const buildChangeLog = (existingCase, updates) => {
 };
 
 /**
+ * @desc    Get the next available registration number
+ * @route   GET /api/cases/next-number
+ * @access  Private
+ */
+const getNextRegistrationNumber = async (req, res) => {
+  try {
+    const latest = await Case.findOne({}, { registrationNumber: 1 })
+      .sort({ registrationNumber: -1 })
+      .lean();
+
+    const nextNumber = latest ? latest.registrationNumber + 1 : 1;
+
+    return res.status(200).json({
+      success: true,
+      data: { nextNumber },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to get next registration number.",
+      error: error.message,
+    });
+  }
+};
+
+/**
  * @desc    Create a new case
  * @route   POST /api/cases
  * @access  Private
@@ -39,7 +66,9 @@ const createCase = async (req, res) => {
       caseName,
       petitioner,
       defendant,
+      ourClient,
       registrationDate,
+      previousHearingDate,
       caseDescription,
       lawyerIds,
       primaryLawyerId,
@@ -51,21 +80,36 @@ const createCase = async (req, res) => {
       internalNotes,
     } = req.body;
 
-    if (!caseName || !petitioner || !defendant || !registrationDate) {
+    if (!ourClient || !["petitioner", "defendant"].includes(ourClient)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Case name, petitioner, defendant, and registration date are required.",
+        message: "ourClient must be either 'petitioner' or 'defendant'.",
       });
     }
 
-    const existingCase = await Case.findOne({ caseNumber: caseNumber.trim() });
-
-    if (existingCase) {
-      return res.status(409).json({
+    if (ourClient === "petitioner" && !petitioner) {
+      return res.status(400).json({
         success: false,
-        message: "A case with this case number already exists.",
+        message: "Petitioner name is required when our client is the petitioner.",
       });
+    }
+
+    if (ourClient === "defendant" && !defendant) {
+      return res.status(400).json({
+        success: false,
+        message: "Defendant name is required when our client is the defendant.",
+      });
+    }
+
+    // Check for duplicate case number only if one was provided
+    if (caseNumber && caseNumber.trim()) {
+      const existingCase = await Case.findOne({ caseNumber: caseNumber.trim() });
+      if (existingCase) {
+        return res.status(409).json({
+          success: false,
+          message: "A case with this case number already exists.",
+        });
+      }
     }
 
     if (lawyerIds && !Array.isArray(lawyerIds)) {
@@ -103,14 +147,23 @@ const createCase = async (req, res) => {
       }
     }
 
+    // Auto-assign registration number as max + 1
+    const latest = await Case.findOne({}, { registrationNumber: 1 })
+      .sort({ registrationNumber: -1 })
+      .lean();
+    const registrationNumber = latest ? latest.registrationNumber + 1 : 1;
+
     const newCase = await Case.create({
-      caseNumber: caseNumber.trim(),
-      caseName: caseName.trim(),
-      petitioner: petitioner.trim(),
-      defendant: defendant.trim(),
+      registrationNumber,
+      caseNumber: caseNumber?.trim() || undefined,
+      caseName: caseName?.trim() || "",
+      petitioner: petitioner?.trim() || "",
+      defendant: defendant?.trim() || "",
+      ourClient,
       caseDescription: caseDescription?.trim() || "",
       lawyerIds: lawyerIds || [],
       registrationDate,
+      previousHearingDate: previousHearingDate || null,
       primaryLawyerId: primaryLawyerId || null,
       caseStatus: caseStatus || "active",
       nextHearingDate: nextHearingDate || null,
@@ -123,11 +176,58 @@ const createCase = async (req, res) => {
       updateHistory: [],
     });
 
+    // Auto-create hearing entries from the dates provided on the case form
+    if (previousHearingDate || nextHearingDate) {
+      const hearingBase = {
+        caseId: newCase._id,
+        appearedBy: "",
+        hearingVerdict: "",
+        hearingNotes: "",
+        createdBy: req.user._id,
+        updatedBy: req.user._id,
+        updateHistory: [],
+      };
+
+      let latestHearing = null;
+
+      if (previousHearingDate) {
+        // Create a "done" hearing for the previous date
+        latestHearing = await Hearing.create({
+          ...hearingBase,
+          hearingDate: previousHearingDate,
+          hearingStatus: "done",
+          nextHearingDate: nextHearingDate || null,
+        });
+
+        // If there is also a next date, create a separate "upcoming" hearing
+        if (nextHearingDate) {
+          await Hearing.create({
+            ...hearingBase,
+            hearingDate: nextHearingDate,
+            hearingStatus: "upcoming",
+            nextHearingDate: null,
+          });
+        }
+      } else {
+        // Only next hearing date provided — create a single "upcoming" hearing
+        latestHearing = await Hearing.create({
+          ...hearingBase,
+          hearingDate: nextHearingDate,
+          hearingStatus: "upcoming",
+          nextHearingDate: null,
+        });
+      }
+
+      // Point the case at the latest (done or only) hearing
+      await Case.findByIdAndUpdate(newCase._id, {
+        $set: { latestHearingId: latestHearing._id },
+      });
+    }
+
     const populatedCase = await Case.findById(newCase._id)
-      .populate("lawyerIds", "name email role")
-      .populate("primaryLawyerId", "name email role")
       .populate("createdBy", "name email role")
-      .populate("updatedBy", "name email role");
+      .populate("updatedBy", "name email role")
+      .populate("latestHearingId", "hearingDate");
 
     return res.status(201).json({
       success: true,
@@ -204,6 +304,7 @@ const getAllCases = async (req, res) => {
       .populate("primaryLawyerId", "name email role")
       .populate("createdBy", "name email role")
       .populate("updatedBy", "name email role")
+      .populate("latestHearingId", "hearingDate hearingVerdict hearingNotes")
       .sort({ updatedAt: -1 });
 
     return res.status(200).json({
@@ -296,7 +397,9 @@ const updateCase = async (req, res) => {
       "caseName",
       "petitioner",
       "defendant",
+      "ourClient",
       "registrationDate",
+      "previousHearingDate",
       "caseDescription",
       "caseStatus",
       "nextHearingDate",
@@ -322,7 +425,7 @@ const updateCase = async (req, res) => {
       });
     }
 
-    if (updates.caseNumber) {
+    if (updates.caseNumber && updates.caseNumber.trim()) {
       const duplicateCase = await Case.findOne({
         caseNumber: updates.caseNumber.trim(),
         _id: { $ne: id },
@@ -336,6 +439,10 @@ const updateCase = async (req, res) => {
       }
 
       updates.caseNumber = updates.caseNumber.trim();
+    } else if (updates.caseNumber !== undefined) {
+      // Clearing the case number — unset the field so the sparse index ignores it
+      delete updates.caseNumber;
+      await Case.findByIdAndUpdate(id, { $unset: { caseNumber: "" } });
     }
 
     if (updates.caseName) updates.caseName = updates.caseName.trim();
@@ -461,6 +568,7 @@ const deleteCase = async (req, res) => {
       });
     }
 
+    await Hearing.deleteMany({ caseId: id });
     await Case.findByIdAndDelete(id);
 
     return res.status(200).json({
@@ -477,6 +585,7 @@ const deleteCase = async (req, res) => {
 };
 
 module.exports = {
+  getNextRegistrationNumber,
   createCase,
   getAllCases,
   getCaseById,

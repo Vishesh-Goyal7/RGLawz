@@ -1,5 +1,6 @@
 const express = require("express");
 const {
+  getNextRegistrationNumber,
   createCase,
   getAllCases,
   getCaseById,
@@ -14,6 +15,7 @@ const router = express.Router();
 // All logged-in users
 router.post("/", protect, createCase);
 router.get("/", protect, getAllCases);
+router.get("/next-number", protect, getNextRegistrationNumber);
 router.get("/:id", protect, getCaseById);
 router.put("/:id", protect, updateCase);
 

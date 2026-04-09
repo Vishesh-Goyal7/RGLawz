@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
 import CaseFormModal from "./CaseFormModal";
 import CaseHearingsModal from "./CaseHearingsModal";
+import CaseQuickEditModal from "./CaseQuickEditModal";
 import "../styles/CaseManagement.css";
 
 const CaseManagement = () => {
@@ -19,6 +20,7 @@ const CaseManagement = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [hearingsCase, setHearingsCase] = useState(null);
   const [isHearingsOpen, setIsHearingsOpen] = useState(false);
+  const [quickEdit, setQuickEdit] = useState(null); // { caseData, mode: "court"|"caseNumber" }
 
   const authHeaders = {
     headers: {
@@ -65,6 +67,7 @@ const CaseManagement = () => {
     setIsFormOpen(false);
     setIsHearingsOpen(false);
     setHearingsCase(null);
+    setQuickEdit(null);
   };
 
   const handleDeleteCase = async (caseId) => {
@@ -156,12 +159,13 @@ const CaseManagement = () => {
             <table>
               <thead>
                 <tr>
-                  <th>Case Number</th>
+                  <th>Reg. No.</th>
+                  <th>Court Case Number</th>
                   <th>Petitioner</th>
                   <th>Defendant</th>
                   <th>Court</th>
                   <th>Judge Name</th>
-                  <th>Last Hearing</th>
+                  <th>Case Date</th>
                   <th>Next Hearing</th>
                   <th>Actions</th>
                 </tr>
@@ -169,13 +173,53 @@ const CaseManagement = () => {
               <tbody>
                 {filteredCases.map((item) => (
                   <tr key={item._id}>
-                    <td>{item.caseNumber}</td>
-                    <td>{item.petitioner}</td>
-                    <td>{item.defendant}</td>
-                    <td>{item.courtName || "N/A"}</td>
-                    <td>{item.judgeName || "N/A"}</td>
+                    <td>{item.registrationNumber ?? "—"}</td>
                     <td>
-                      {item.latestHearingId?.hearingDate
+                      <div className="inline-edit-cell">
+                        <span>{item.caseNumber || <em className="empty-cell-hint">Not set</em>}</span>
+                        <button
+                          className="pencil-btn"
+                          title="Edit Court Case Number"
+                          onClick={() => setQuickEdit({ caseData: item, mode: "caseNumber" })}
+                        >
+                          ✎
+                        </button>
+                      </div>
+                    </td>
+                    <td>
+                      {item.petitioner}
+                      {item.ourClient === "petitioner" && (
+                        <span className="our-client-mark" title="Our Client"> *</span>
+                      )}
+                    </td>
+                    <td>
+                      {item.defendant}
+                      {item.ourClient === "defendant" && (
+                        <span className="our-client-mark" title="Our Client"> *</span>
+                      )}
+                    </td>
+                    <td>{item.courtName || "N/A"}</td>
+                    <td>
+                      <div className="inline-edit-cell">
+                        <span>{item.judgeName || <em className="empty-cell-hint">Not set</em>}</span>
+                        <button
+                          className="pencil-btn"
+                          title="Edit Court Details"
+                          onClick={() => setQuickEdit({ caseData: item, mode: "court" })}
+                        >
+                          ✎
+                        </button>
+                      </div>
+                    </td>
+                    <td>
+                      {item.previousHearingDate
+                        ? new Intl.DateTimeFormat("en-IN", {
+                            timeZone: "Asia/Kolkata",
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          }).format(new Date(item.previousHearingDate))
+                        : item.latestHearingId?.hearingDate
                         ? new Intl.DateTimeFormat("en-IN", {
                             timeZone: "Asia/Kolkata",
                             day: "2-digit",
@@ -235,6 +279,16 @@ const CaseManagement = () => {
           caseData={hearingsCase}
           authHeaders={authHeaders}
           onClose={closeModals}
+        />
+      )}
+
+      {quickEdit && (
+        <CaseQuickEditModal
+          caseData={quickEdit.caseData}
+          mode={quickEdit.mode}
+          authHeaders={authHeaders}
+          onClose={closeModals}
+          onSuccess={fetchCases}
         />
       )}
     </div>
