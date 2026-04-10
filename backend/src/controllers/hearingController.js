@@ -24,8 +24,11 @@ const buildChangeLog = (existingHearing, updates) => {
   return changes;
 };
 
+// Returns the upcoming hearing (existing or newly created), or null if no nextHearingDate.
+// After calling this, update latestHearingId on the case to point to the returned hearing
+// so that latestHearingId always tracks the current tip of the chain.
 const ensureUpcomingHearingExists = async (hearingDoc, userId) => {
-  if (!hearingDoc.nextHearingDate || !hearingDoc.caseId) return;
+  if (!hearingDoc.nextHearingDate || !hearingDoc.caseId) return null;
 
   const existingUpcoming = await Hearing.findOne({
     caseId: hearingDoc.caseId,
@@ -33,9 +36,9 @@ const ensureUpcomingHearingExists = async (hearingDoc, userId) => {
     hearingStatus: "upcoming",
   });
 
-  if (existingUpcoming) return;
+  if (existingUpcoming) return existingUpcoming;
 
-  await Hearing.create({
+  const newHearing = await Hearing.create({
     caseId: hearingDoc.caseId,
     hearingDate: hearingDoc.nextHearingDate,
     appearedBy: "",
@@ -47,6 +50,8 @@ const ensureUpcomingHearingExists = async (hearingDoc, userId) => {
     updatedBy: userId,
     updateHistory: [],
   });
+
+  return newHearing;
 };
 
 const syncCaseFromHearing = async (
@@ -61,6 +66,8 @@ const syncCaseFromHearing = async (
   const caseUpdates = {
     latestHearingId: hearingDoc._id,
     updatedBy: userId,
+    // Keep previousHearingDate in sync with the last completed hearing
+    previousHearingDate: hearingDoc.hearingDate,
   };
 
   if (hearingDoc.nextHearingDate) {
@@ -166,7 +173,10 @@ const createHearing = async (req, res) => {
     });
 
     await syncCaseFromHearing(caseId, hearing, req.user._id, null);
-    await ensureUpcomingHearingExists(hearing, req.user._id);
+    const upcomingHearing = await ensureUpcomingHearingExists(hearing, req.user._id);
+    if (upcomingHearing) {
+      await Case.findByIdAndUpdate(caseId, { latestHearingId: upcomingHearing._id });
+    }
 
     const populatedHearing = await Hearing.findById(hearing._id)
       .populate("caseId")
@@ -351,7 +361,10 @@ const updateHearing = async (req, res) => {
       updates.nextHearingDate ? null : finalCaseStatus
     );
 
-    await ensureUpcomingHearingExists(updatedHearing, req.user._id);
+    const upcomingHearing = await ensureUpcomingHearingExists(updatedHearing, req.user._id);
+    if (upcomingHearing) {
+      await Case.findByIdAndUpdate(updatedHearing.caseId._id, { latestHearingId: upcomingHearing._id });
+    }
 
     return res.status(200).json({
       success: true,

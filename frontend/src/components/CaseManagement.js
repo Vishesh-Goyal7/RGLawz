@@ -136,9 +136,8 @@ const CaseManagement = () => {
         >
           <option value="">All Statuses</option>
           <option value="active">Active</option>
-          <option value="pending">Pending</option>
-          <option value="disposed">Disposed</option>
-          <option value="on_hold">On Hold</option>
+          <option value="decided">Decided</option>
+          <option value="settlement">Settlement</option>
         </select>
 
         <input

@@ -1,0 +1,26 @@
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville&display=swap');
+
+.app-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.office-banner {
+  width: 100%;
+  background-color: #9d5e3d;
+  color: #ffffff;
+  text-align: center;
+  padding: 12px 0;
+  font-size: 1.1rem;
+  font-weight: 400;
+  font-family: 'Libre Baskerville', serif;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.app-root > *:not(.office-banner) {
+  flex: 1;
+  min-height: 0;
+}

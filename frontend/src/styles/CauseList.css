@@ -63,6 +63,51 @@
   background: #f6ece6;
 }
 
+/* ── overdue alert banner ───────────────────────────── */
+.cl-overdue-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  padding: 14px 24px;
+  background: #7a1a00;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.cl-overdue-banner:hover {
+  background: #5e1300;
+}
+
+.cl-overdue-shine {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: linear-gradient(90deg, #ff9f6b, #ffffff, #ffcd99, #ffffff, #ff9f6b);
+  background-size: 300% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shine 2.4s linear infinite;
+}
+
+.cl-overdue-cta {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #ffcdb0;
+  letter-spacing: 0.05em;
+  opacity: 0.9;
+}
+
+@keyframes shine {
+  0%   { background-position: 0% center; }
+  100% { background-position: 300% center; }
+}
+
 /* ── calendar card ──────────────────────────────────── */
 .cl-calendar-card {
   flex: 1;                     /* fill remaining page height */

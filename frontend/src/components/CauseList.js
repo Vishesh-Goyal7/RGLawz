@@ -23,14 +23,12 @@ const formatDisplay = (dateVal) => {
   }).format(new Date(dateVal));
 };
 
-/* ── shared table used in both sections of the today modal ── */
+/* ── shared table ────────────────────────────────────── */
 const HearingTable = ({ rows, isPast, isOverdue = false, modalDate, onUpdate, hearingLoading }) => (
   <table className={`cl-table${isOverdue ? " cl-table-overdue" : ""}`}>
     <thead>
       <tr>
-        <th className="cl-col-date">
-          {isPast ? "Hearing Date" : "Previous Hearing Date"}
-        </th>
+        <th className="cl-col-date">{isPast ? "Hearing Date" : "Previous Hearing Date"}</th>
         <th className="cl-col-party">Petitioner</th>
         <th className="cl-col-party">Defendant</th>
         <th className="cl-col-judge">Judge</th>
@@ -41,38 +39,31 @@ const HearingTable = ({ rows, isPast, isOverdue = false, modalDate, onUpdate, he
     </thead>
     <tbody>
       {rows.map((item) => {
-        const prevDate =
-          item.previousHearingDate || item.latestHearingId?.hearingDate || null;
-        const verdict = item.latestHearingId?.hearingVerdict || "—";
-        // Overdue rows always show Update (they need to be recorded regardless).
-        // Non-overdue past rows show Update only when no next date is set yet.
-        const showUpdate = isOverdue ? true : (isPast ? !item.nextHearingDate : true);
+        const prevDate = item.previousHearingDate || item.latestHearingId?.hearingDate || null;
+        const verdict  = item.latestHearingId?.hearingVerdict || "—";
+        // isOverdueTip: case appears on this past date because its chain tip (not a completed hearing) is overdue
+        const isOverdueTip = isPast && toLocalDateStr(item.latestHearingId?.hearingDate) === modalDate;
+        const showUpdate = isOverdue ? true : (isPast ? (!item.nextHearingDate || isOverdueTip) : true);
 
         return (
           <tr key={item._id} className={isOverdue ? "cl-row-overdue" : ""}>
             <td className="cl-col-date">
               <span className="cl-truncate">
                 {isOverdue
-                  ? formatDisplay(item.nextHearingDate)   // show the missed date
+                  ? formatDisplay(item.nextHearingDate || item.latestHearingId?.hearingDate)
                   : isPast
                     ? formatDisplay(modalDate + "T00:00:00Z")
                     : formatDisplay(prevDate)}
               </span>
             </td>
             <td className="cl-col-party">
-              <span className="cl-truncate" title={item.petitioner}>
-                {item.petitioner || "—"}
-              </span>
+              <span className="cl-truncate" title={item.petitioner}>{item.petitioner || "—"}</span>
             </td>
             <td className="cl-col-party">
-              <span className="cl-truncate" title={item.defendant}>
-                {item.defendant || "—"}
-              </span>
+              <span className="cl-truncate" title={item.defendant}>{item.defendant || "—"}</span>
             </td>
             <td className="cl-col-judge">
-              <span className="cl-truncate" title={item.judgeName}>
-                {item.judgeName || "—"}
-              </span>
+              <span className="cl-truncate" title={item.judgeName}>{item.judgeName || "—"}</span>
             </td>
             <td className="cl-col-verdict">
               <span className="cl-verdict-text">{verdict}</span>
@@ -113,18 +104,17 @@ const CauseList = () => {
   const token = localStorage.getItem("token");
   const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
 
-  // Use local date (not UTC) so IST users see the correct "today"
   const _now = new Date();
   const today = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}-${String(_now.getDate()).padStart(2, "0")}`;
 
-  const [cases, setCases] = useState([]);
+  const [cases, setCases]   = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [calYear, setCalYear]   = useState(new Date().getFullYear());
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
 
-  // Modal state
-  const [modalDate, setModalDate] = useState(null);
+  const [modalDate, setModalDate]           = useState(null);
+  const [overdueModalOpen, setOverdueModalOpen] = useState(false);
   const [hearingLoading, setHearingLoading] = useState(false);
   const [updatingHearing, setUpdatingHearing] = useState(null);
   const [hearingModalOpen, setHearingModalOpen] = useState(false);
@@ -144,75 +134,76 @@ const CauseList = () => {
 
   useEffect(() => { fetchCases(); }, [fetchCases]);
 
-  /* ── date maps ───────────────────────────────────────
-     Past dates  → keyed by previousHearingDate (fallback: latestHearingId.hearingDate)
-     Today + future → keyed by nextHearingDate
-  ────────────────────────────────────────────────────── */
+  /* ── chain model: overdue detection ─────────────────── */
+  // latestHearingId is always the chain tip.
+  // tip date in past → overdue. No tip but past previousHearingDate → also overdue.
+  const isOverdueCase = (c) => {
+    if (c.caseStatus !== "active") return false;
+    const tip = c.latestHearingId;
+    if (tip) {
+      const tipDate = toLocalDateStr(tip.hearingDate);
+      return !!tipDate && tipDate < today;
+    }
+    const prevDate = toLocalDateStr(c.previousHearingDate);
+    return !!prevDate && prevDate < today;
+  };
+
+  /* ── date maps driven by the chain ──────────────────── */
   const pastCountByDate   = {};
   const futureCountByDate = {};
 
   cases.forEach((c) => {
-    const prevDate = toLocalDateStr(
-      c.previousHearingDate || c.latestHearingId?.hearingDate
-    );
-    const nextDate = toLocalDateStr(c.nextHearingDate);
+    const prevDate = toLocalDateStr(c.previousHearingDate);
+    const tipDate  = toLocalDateStr(c.latestHearingId?.hearingDate);
 
-    if (prevDate && prevDate < today) {
+    // Past: last completed hearing date
+    if (prevDate && prevDate < today)
       pastCountByDate[prevDate] = (pastCountByDate[prevDate] || 0) + 1;
-    }
-    if (nextDate && nextDate >= today) {
-      futureCountByDate[nextDate] = (futureCountByDate[nextDate] || 0) + 1;
+
+    if (tipDate) {
+      if (tipDate >= today) {
+        // Future: chain tip is an upcoming hearing
+        futureCountByDate[tipDate] = (futureCountByDate[tipDate] || 0) + 1;
+      } else if (tipDate !== prevDate) {
+        // Overdue tip: tip date is in the past but not yet updated — count it as a past date
+        pastCountByDate[tipDate] = (pastCountByDate[tipDate] || 0) + 1;
+      }
     }
   });
 
-  // Total overdue cases (nextHearingDate is set and in the past)
-  const overdueTotal = cases.filter((c) => {
-    const nd = toLocalDateStr(c.nextHearingDate);
-    return nd && nd < today;
-  }).length;
+  const overdueCases = cases
+    .filter(isOverdueCase)
+    .sort((a, b) => {
+      const aDate = a.nextHearingDate || a.latestHearingId?.hearingDate;
+      const bDate = b.nextHearingDate || b.latestHearingId?.hearingDate;
+      return new Date(aDate) - new Date(bDate);
+    });
 
-  /* Count for a given calendar cell */
+  /* ── calendar helpers ────────────────────────────────── */
   const countForDate = (ds) => {
     if (!ds) return 0;
-    if (ds === today) {
-      // Today's cell = cases scheduled today + all overdue cases
-      return (futureCountByDate[ds] || 0) + overdueTotal;
-    }
-    return ds < today
-      ? (pastCountByDate[ds]   || 0)
-      : (futureCountByDate[ds] || 0);
+    if (ds === today) return (futureCountByDate[ds] || 0) + overdueCases.length;
+    return ds < today ? (pastCountByDate[ds] || 0) : (futureCountByDate[ds] || 0);
   };
 
-  /* Cases shown in the modal when a date is clicked */
   const casesForDate = (ds) => {
     if (!ds) return [];
     if (ds < today) {
-      // past — match on previousHearingDate or latestHearingId.hearingDate
+      // Past: match on last completed hearing date OR overdue tip date
       return cases.filter((c) => {
-        const prevDate = toLocalDateStr(
-          c.previousHearingDate || c.latestHearingId?.hearingDate
-        );
-        return prevDate === ds;
+        const prevDate = toLocalDateStr(c.previousHearingDate);
+        const tipDate  = toLocalDateStr(c.latestHearingId?.hearingDate);
+        return prevDate === ds || (tipDate === ds && tipDate < today && tipDate !== prevDate);
       });
     }
-    // today or future — match on nextHearingDate
-    return cases.filter((c) => toLocalDateStr(c.nextHearingDate) === ds);
+    // Today / future: match on the chain tip's date
+    return cases.filter((c) => toLocalDateStr(c.latestHearingId?.hearingDate) === ds);
   };
 
-  const modalCases = casesForDate(modalDate);
-  const isPastModal = modalDate && modalDate < today;
+  const modalCases   = casesForDate(modalDate);
+  const isPastModal  = modalDate && modalDate < today;
   const isTodayModal = modalDate === today;
 
-  // Overdue: nextHearingDate is set, is strictly before today, meaning
-  // the hearing passed but the user never recorded the verdict / next date.
-  const overdueCases = isTodayModal
-    ? cases.filter((c) => {
-        const nd = toLocalDateStr(c.nextHearingDate);
-        return nd && nd < today;
-      }).sort((a, b) => new Date(a.nextHearingDate) - new Date(b.nextHearingDate))
-    : [];
-
-  /* ── calendar grid ───────────────────────────────────── */
   const firstDay    = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
 
@@ -231,9 +222,7 @@ const CauseList = () => {
   while (cells.length % 7 !== 0) cells.push(null);
 
   const cellDateStr = (day) =>
-    day
-      ? `${calYear}-${String(calMonth + 1).padStart(2,"0")}-${String(day).padStart(2,"0")}`
-      : null;
+    day ? `${calYear}-${String(calMonth + 1).padStart(2,"0")}-${String(day).padStart(2,"0")}` : null;
 
   /* ── update hearing ──────────────────────────────────── */
   const handleUpdateClick = async (caseItem) => {
@@ -242,32 +231,17 @@ const CauseList = () => {
       const res = await api.get(`/hearings?caseId=${caseItem._id}`, authHeaders);
       const hearings = res.data.data || [];
 
-      // 1. Upcoming hearing that matches the case's nextHearingDate
       let target = hearings.find(
-        (h) =>
-          h.hearingStatus === "upcoming" &&
-          toLocalDateStr(h.hearingDate) === toLocalDateStr(caseItem.nextHearingDate)
+        (h) => h.hearingStatus === "upcoming" &&
+               toLocalDateStr(h.hearingDate) === toLocalDateStr(caseItem.nextHearingDate)
       );
-
-      // 2. Any upcoming hearing for this case
       if (!target) target = hearings.find((h) => h.hearingStatus === "upcoming");
-
-      // 3. Done hearing on the clicked date (covers past-date modal with no next date)
-      if (!target && modalDate) {
+      if (!target && modalDate)
         target = hearings.find((h) => toLocalDateStr(h.hearingDate) === modalDate);
-      }
+      if (!target && hearings.length > 0)
+        target = [...hearings].sort((a, b) => new Date(b.hearingDate) - new Date(a.hearingDate))[0];
 
-      // 4. Most recent hearing as last resort
-      if (!target && hearings.length > 0) {
-        target = [...hearings].sort(
-          (a, b) => new Date(b.hearingDate) - new Date(a.hearingDate)
-        )[0];
-      }
-
-      if (!target) {
-        alert("No hearing record found for this case.");
-        return;
-      }
+      if (!target) { alert("No hearing record found for this case."); return; }
 
       setUpdatingHearing(target);
       setHearingModalOpen(true);
@@ -287,13 +261,12 @@ const CauseList = () => {
   /* ── render ──────────────────────────────────────────── */
   return (
     <div className="cause-list">
+
       {/* toolbar */}
       <div className="cl-toolbar">
         <div>
           <h2>Cause List</h2>
-          <p>
-            Past dates show hearings by last hearing date · Today &amp; future show hearings by next hearing date.
-          </p>
+          <p>Past dates show hearings by last hearing date · Today &amp; future show hearings by next hearing date.</p>
         </div>
         <div className="cl-cal-nav">
           <button className="cl-nav-btn" onClick={prevMonth}>‹</button>
@@ -302,28 +275,36 @@ const CauseList = () => {
         </div>
       </div>
 
-      {/* full-page calendar */}
+      {/* ── overdue alert banner ── */}
+      {!loading && overdueCases.length > 0 && (
+        <button className="cl-overdue-banner" onClick={() => setOverdueModalOpen(true)}>
+          <span className="cl-overdue-shine">
+            {overdueCases.length} Hearing{overdueCases.length !== 1 ? "s" : ""} to be Updated
+          </span>
+          <span className="cl-overdue-cta">Click to Update →</span>
+        </button>
+      )}
+
+      {/* calendar */}
       <div className="cl-calendar-card">
         <div className="cl-cal-grid">
           {DAYS.map((d) => (
             <div key={d} className="cl-day-name">{d}</div>
           ))}
-
           {cells.map((day, idx) => {
-            const ds    = cellDateStr(day);
-            const count = countForDate(ds);
+            const ds      = cellDateStr(day);
+            const count   = countForDate(ds);
             const isToday = ds === today;
             const isPast  = ds && ds < today;
-
             return (
               <div
                 key={idx}
                 className={[
                   "cl-day-cell",
                   !day      ? "cl-day-empty"    : "",
-                  isToday   ? "cl-day-today"     : "",
-                  isPast    ? "cl-day-past"      : "",
-                  count > 0 ? "cl-day-has-cases" : "",
+                  isToday   ? "cl-day-today"    : "",
+                  isPast    ? "cl-day-past"     : "",
+                  count > 0 ? "cl-day-has-cases": "",
                 ].join(" ").trim()}
                 onClick={() => day && setModalDate(ds)}
               >
@@ -343,86 +324,67 @@ const CauseList = () => {
         </div>
       </div>
 
-      {/* ── date modal ──────────────────────────────────── */}
+      {/* ── date modal ── */}
       {modalDate && (
         <div className="modal-overlay" onClick={() => setModalDate(null)}>
-          <div
-            className="modal-card cl-date-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="modal-card cl-date-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>
                 {isTodayModal
                   ? "Today's Hearings"
                   : `${isPastModal ? "Hearings held on" : "Hearings on"} ${formatDisplay(modalDate + "T00:00:00Z")}`}
-                <span className="cl-list-count">
-                  {isTodayModal ? modalCases.length + overdueCases.length : modalCases.length}
-                </span>
+                <span className="cl-list-count">{modalCases.length}</span>
               </h3>
               <button className="close-btn" onClick={() => setModalDate(null)}>×</button>
             </div>
-
             {loading ? (
               <p className="cl-empty">Loading…</p>
             ) : (
               <div className="cl-table-wrapper">
-
-                {/* ── today: hearings scheduled for today ── */}
                 {isTodayModal && (
-                  <>
-                    <div className="cl-section-label">
-                      Today's Schedule
-                      <span className="cl-list-count">{modalCases.length}</span>
-                    </div>
-                    {modalCases.length === 0 ? (
-                      <p className="cl-empty">No hearings scheduled for today.</p>
-                    ) : (
-                      <HearingTable
-                        rows={modalCases}
-                        isPast={false}
-                        modalDate={modalDate}
-                        onUpdate={handleUpdateClick}
-                        hearingLoading={hearingLoading}
-                      />
-                    )}
-
-                    {/* ── pending updates section ── */}
-                    {overdueCases.length > 0 && (
-                      <>
-                        <div className="cl-section-label cl-section-overdue">
-                          ⚠ Pending Updates — Hearings not yet recorded
-                          <span className="cl-list-count cl-count-overdue">{overdueCases.length}</span>
-                        </div>
-                        <HearingTable
-                          rows={overdueCases}
-                          isPast={true}
-                          isOverdue={true}
-                          modalDate={modalDate}
-                          onUpdate={handleUpdateClick}
-                          hearingLoading={hearingLoading}
-                        />
-                      </>
-                    )}
-                  </>
+                  <div className="cl-section-label">
+                    Today's Schedule
+                    <span className="cl-list-count">{modalCases.length}</span>
+                  </div>
                 )}
-
-                {/* ── non-today modal ── */}
-                {!isTodayModal && (
-                  modalCases.length === 0 ? (
-                    <p className="cl-empty">No hearings found for this date.</p>
-                  ) : (
-                    <HearingTable
-                      rows={modalCases}
-                      isPast={isPastModal}
-                      modalDate={modalDate}
-                      onUpdate={handleUpdateClick}
-                      hearingLoading={hearingLoading}
-                    />
-                  )
+                {modalCases.length === 0 ? (
+                  <p className="cl-empty">No hearings found for this date.</p>
+                ) : (
+                  <HearingTable
+                    rows={modalCases}
+                    isPast={isPastModal}
+                    modalDate={modalDate}
+                    onUpdate={handleUpdateClick}
+                    hearingLoading={hearingLoading}
+                  />
                 )}
-
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── overdue modal ── */}
+      {overdueModalOpen && (
+        <div className="modal-overlay" onClick={() => setOverdueModalOpen(false)}>
+          <div className="modal-card cl-date-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>
+                Pending Hearing Updates
+                <span className="cl-list-count cl-count-overdue">{overdueCases.length}</span>
+              </h3>
+              <button className="close-btn" onClick={() => setOverdueModalOpen(false)}>×</button>
+            </div>
+            <div className="cl-table-wrapper">
+              <HearingTable
+                rows={overdueCases}
+                isPast={true}
+                isOverdue={true}
+                modalDate={null}
+                onUpdate={handleUpdateClick}
+                hearingLoading={hearingLoading}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -433,7 +395,7 @@ const CauseList = () => {
           editingHearing={updatingHearing}
           authHeaders={authHeaders}
           onClose={closeHearingModal}
-          onSuccess={() => { fetchCases(); setModalDate(null); }}
+          onSuccess={() => { fetchCases(); setOverdueModalOpen(false); setModalDate(null); }}
         />
       )}
     </div>

@@ -188,29 +188,31 @@ const createCase = async (req, res) => {
         updateHistory: [],
       };
 
-      let latestHearing = null;
+      let chainTip = null; // always the current tip of the chain
 
       if (previousHearingDate) {
-        // Create a "done" hearing for the previous date
-        latestHearing = await Hearing.create({
+        const doneHearing = await Hearing.create({
           ...hearingBase,
           hearingDate: previousHearingDate,
           hearingStatus: "done",
           nextHearingDate: nextHearingDate || null,
         });
 
-        // If there is also a next date, create a separate "upcoming" hearing
         if (nextHearingDate) {
-          await Hearing.create({
+          // Upcoming hearing is the tip
+          chainTip = await Hearing.create({
             ...hearingBase,
             hearingDate: nextHearingDate,
             hearingStatus: "upcoming",
             nextHearingDate: null,
           });
+        } else {
+          // No next date yet — done hearing is the tip for now
+          chainTip = doneHearing;
         }
       } else {
-        // Only next hearing date provided — create a single "upcoming" hearing
-        latestHearing = await Hearing.create({
+        // Only next date — upcoming hearing is the tip
+        chainTip = await Hearing.create({
           ...hearingBase,
           hearingDate: nextHearingDate,
           hearingStatus: "upcoming",
@@ -218,9 +220,9 @@ const createCase = async (req, res) => {
         });
       }
 
-      // Point the case at the latest (done or only) hearing
+      // latestHearingId always points to the current chain tip
       await Case.findByIdAndUpdate(newCase._id, {
-        $set: { latestHearingId: latestHearing._id },
+        $set: { latestHearingId: chainTip._id },
       });
     }
 
@@ -304,7 +306,7 @@ const getAllCases = async (req, res) => {
       .populate("primaryLawyerId", "name email role")
       .populate("createdBy", "name email role")
       .populate("updatedBy", "name email role")
-      .populate("latestHearingId", "hearingDate hearingVerdict hearingNotes")
+      .populate("latestHearingId", "hearingDate hearingVerdict hearingNotes hearingStatus")
       .sort({ updatedAt: -1 });
 
     return res.status(200).json({
