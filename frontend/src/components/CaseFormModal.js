@@ -289,12 +289,13 @@ const CaseFormModal = ({
           </div>
 
           <div className="form-group full-width">
-            <label>Internal Notes</label>
+            <label>Agreed Payment Terms</label>
             <textarea
               name="internalNotes"
               value={formData.internalNotes}
               onChange={handleChange}
-              rows="3"
+              rows="4"
+              placeholder="e.g. 50% advance, balance on disposal..."
             />
           </div>
 
