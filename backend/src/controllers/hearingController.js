@@ -400,7 +400,35 @@ const deleteHearing = async (req, res) => {
       });
     }
 
+    const caseId = hearing.caseId;
     await Hearing.findByIdAndDelete(id);
+
+    // Re-sync the case from remaining hearings
+    const remaining = await Hearing.find({ caseId }).sort({ hearingDate: -1 });
+
+    if (remaining.length === 0) {
+      await Case.findByIdAndUpdate(caseId, {
+        $set: {
+          latestHearingId: null,
+          nextHearingDate: null,
+          previousHearingDate: null,
+          updatedBy: req.user._id,
+        },
+      });
+    } else {
+      const upcomingHearing = remaining.find((h) => h.hearingStatus === "upcoming");
+      const latestDone     = remaining.find((h) => h.hearingStatus === "done");
+      const newLatest      = upcomingHearing || latestDone || remaining[0];
+
+      await Case.findByIdAndUpdate(caseId, {
+        $set: {
+          latestHearingId:    newLatest._id,
+          nextHearingDate:    upcomingHearing ? upcomingHearing.hearingDate : null,
+          previousHearingDate: latestDone ? latestDone.hearingDate : null,
+          updatedBy: req.user._id,
+        },
+      });
+    }
 
     return res.status(200).json({
       success: true,

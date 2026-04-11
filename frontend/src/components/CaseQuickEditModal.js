@@ -5,6 +5,7 @@ import "../styles/CaseManagement.css";
 /**
  * mode: "court"      → edit Judge Name, Court Room Number, Court Location
  * mode: "caseNumber" → edit Court Case Number
+ * mode: "parties"    → edit Petitioner and Defendant
  */
 const CaseQuickEditModal = ({ caseData, mode, authHeaders, onClose, onSuccess }) => {
   const [formData, setFormData] = useState(
@@ -13,6 +14,11 @@ const CaseQuickEditModal = ({ caseData, mode, authHeaders, onClose, onSuccess })
           judgeName: caseData.judgeName || "",
           courtName: caseData.courtName || "",
           courtLocation: caseData.courtLocation || "",
+        }
+      : mode === "parties"
+      ? {
+          petitioner: caseData.petitioner || "",
+          defendant: caseData.defendant || "",
         }
       : {
           caseNumber: caseData.caseNumber || "",
@@ -30,7 +36,13 @@ const CaseQuickEditModal = ({ caseData, mode, authHeaders, onClose, onSuccess })
     e.preventDefault();
     try {
       setLoading(true);
-      await api.put(`/cases/${caseData._id}`, formData, authHeaders);
+      const payload = { ...formData };
+      if (mode === "parties") {
+        const p = formData.petitioner.trim();
+        const d = formData.defendant.trim();
+        payload.caseName = p && d ? `${p} V/S ${d}` : p || d || "";
+      }
+      await api.put(`/cases/${caseData._id}`, payload, authHeaders);
       await onSuccess();
       onClose();
     } catch (error) {
@@ -45,7 +57,9 @@ const CaseQuickEditModal = ({ caseData, mode, authHeaders, onClose, onSuccess })
     <div className="modal-overlay">
       <div className="modal-card quick-edit-modal">
         <div className="modal-header">
-          <h3>{mode === "court" ? "Edit Court Details" : "Edit Court Case Number"}</h3>
+          <h3>
+            {mode === "court" ? "Edit Court Details" : mode === "parties" ? "Edit Parties" : "Edit Court Case Number"}
+          </h3>
           <button className="close-btn" onClick={onClose}>×</button>
         </div>
 
@@ -82,6 +96,28 @@ const CaseQuickEditModal = ({ caseData, mode, authHeaders, onClose, onSuccess })
                   type="text"
                   name="courtLocation"
                   value={formData.courtLocation}
+                  onChange={handleChange}
+                />
+              </div>
+            </>
+          ) : mode === "parties" ? (
+            <>
+              <div className="form-group full-width">
+                <label>Petitioner</label>
+                <input
+                  type="text"
+                  name="petitioner"
+                  value={formData.petitioner}
+                  onChange={handleChange}
+                  autoFocus
+                />
+              </div>
+              <div className="form-group full-width">
+                <label>Defendant</label>
+                <input
+                  type="text"
+                  name="defendant"
+                  value={formData.defendant}
                   onChange={handleChange}
                 />
               </div>

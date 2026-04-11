@@ -6,6 +6,7 @@ import "../styles/HearingManagement.css";
 
 const HearingManagement = () => {
   const token = localStorage.getItem("token");
+  const isAdmin = JSON.parse(localStorage.getItem("user") || "{}").role === "admin";
 
   const [hearings, setHearings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -55,6 +56,17 @@ const HearingManagement = () => {
     setIsModalOpen(false);
   };
 
+  const handleDelete = async (hearing) => {
+    if (!window.confirm(`Delete hearing on ${new Date(hearing.hearingDate).toLocaleDateString()}? This cannot be undone.`)) return;
+    try {
+      await api.delete(`/hearings/${hearing._id}`, authHeaders);
+      fetchHearings();
+    } catch (err) {
+      console.error("Failed to delete hearing:", err);
+      alert("Failed to delete hearing.");
+    }
+  };
+
   const filteredHearings = useMemo(() => {
     return hearings.filter((item) => {
       const text = searchText.toLowerCase();
@@ -79,7 +91,9 @@ const HearingManagement = () => {
     filteredHearings.forEach((hearing) => {
       const caseId = hearing.caseId?._id || "unknown";
       const caseLabel = hearing.caseId
-        ? `${hearing.caseId.caseNumber} — ${hearing.caseId.caseName}`
+        ? hearing.caseId.caseNumber
+          ? `${hearing.caseId.caseNumber} — ${hearing.caseId.caseName}`
+          : hearing.caseId.caseName || "Unknown Case"
         : "Unknown Case";
 
       if (!grouped[caseId]) {
@@ -106,34 +120,32 @@ const HearingManagement = () => {
     });
   }, [filteredHearings]);
 
-  const renderHearingRow = (item) => (
+  const renderHearingRow = (item, isLatest = false) => (
     <div className="grouped-hearing-row" key={item._id}>
       <div
         className="grouped-hearing-main"
         onClick={() => setSelectedHearing(item)}
       >
         <div>
-          <h4>{new Date(item.hearingDate).toLocaleString()}</h4>
-          <p>
-            Status: <span>{item.hearingStatus}</span>
-          </p>
-          <p>
-            Next Date:{" "}
-            {item.nextHearingDate
-              ? new Date(item.nextHearingDate).toLocaleString()
-              : "N/A"}
-          </p>
+          <h4>{new Date(item.hearingDate).toLocaleDateString()}</h4>
         </div>
-
-        <span className={`status-badge ${item.hearingStatus}`}>
-          {item.hearingStatus}
-        </span>
       </div>
 
       <div className="grouped-hearing-actions">
-        <button className="secondary-btn" onClick={() => openEditModal(item)}>
-          Update
-        </button>
+        {isAdmin && isLatest ? (
+          <>
+            <button className="secondary-btn" onClick={() => openEditModal(item)}>
+              Edit
+            </button>
+            <button className="danger-btn" onClick={() => handleDelete(item)}>
+              Delete
+            </button>
+          </>
+        ) : (
+          <button className="secondary-btn" onClick={() => openEditModal(item)}>
+            Update
+          </button>
+        )}
       </div>
     </div>
   );
@@ -193,14 +205,14 @@ const HearingManagement = () => {
                 </div>
 
                 <div className="hearing-group-latest">
-                  {latestFour.map(renderHearingRow)}
+                  {latestFour.map((h, idx) => renderHearingRow(h, idx === 0))}
                 </div>
 
                 {olderHearings.length > 0 && (
                   <div className="hearing-group-older-wrapper">
                     <h4>Older Hearings</h4>
                     <div className="hearing-group-older-scroll">
-                      {olderHearings.map(renderHearingRow)}
+                      {olderHearings.map((h) => renderHearingRow(h, false))}
                     </div>
                   </div>
                 )}

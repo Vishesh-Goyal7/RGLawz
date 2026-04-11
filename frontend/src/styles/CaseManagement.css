@@ -502,23 +502,19 @@
 
 .case-hearing-item {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
 }
 
 .case-hearing-main {
-  width: 100%;
+  flex: 1;
   display: flex;
-  justify-content: space-between;
   align-items: center;
   text-align: left;
   cursor: pointer;
   gap: 14px;
-}
-
-.case-hearing-actions {
-  display: flex;
-  justify-content: flex-end;
 }
 
 .empty-hearing-state {

@@ -81,22 +81,15 @@ const CaseHearingsModal = ({ caseData, authHeaders, onClose }) => {
                     >
                       <div>
                         <h4>{formatISTDate(hearing.hearingDate)}</h4>
-                        <p>Status: {hearing.hearingStatus}</p>
                         <p>Lawyer on Date: {hearing.appearedBy || "N/A"}</p>
                       </div>
-                      <span className={`status-badge ${hearing.hearingStatus}`}>
-                        {hearing.hearingStatus}
-                      </span>
                     </div>
-
-                    <div className="case-hearing-actions">
-                      <button
-                        className="secondary-btn"
-                        onClick={() => setEditingHearing(hearing)}
-                      >
-                        Update
-                      </button>
-                    </div>
+                    <button
+                      className="secondary-btn"
+                      onClick={() => setEditingHearing(hearing)}
+                    >
+                      Update
+                    </button>
                   </div>
                 ))}
               </div>

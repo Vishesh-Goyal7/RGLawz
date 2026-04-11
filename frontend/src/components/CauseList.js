@@ -24,7 +24,7 @@ const formatDisplay = (dateVal) => {
 };
 
 /* ── shared table ────────────────────────────────────── */
-const HearingTable = ({ rows, isPast, isOverdue = false, modalDate, onUpdate, hearingLoading }) => (
+const HearingTable = ({ rows, isPast, isOverdue = false, modalDate, onUpdate, hearingLoading, allHearings = [], today = "" }) => (
   <table className={`cl-table${isOverdue ? " cl-table-overdue" : ""}`}>
     <thead>
       <tr>
@@ -45,6 +45,29 @@ const HearingTable = ({ rows, isPast, isOverdue = false, modalDate, onUpdate, he
         const isOverdueTip = isPast && toLocalDateStr(item.latestHearingId?.hearingDate) === modalDate;
         const showUpdate = isOverdue ? true : (isPast ? (!item.nextHearingDate || isOverdueTip) : true);
 
+        // For past non-overdue rows: find the hearing that actually occurred on modalDate
+        const specificHearing = isPast && !isOverdue && modalDate
+          ? allHearings.find(h =>
+              toLocalDateStr(h.hearingDate) === modalDate &&
+              (h.caseId?._id || h.caseId)?.toString() === item._id?.toString()
+            )
+          : null;
+
+        // Determine the next date to display in the Next Date column
+        const nextDateNode = (() => {
+          if (isOverdue) return <span className="cl-update-pending">Update Pending</span>;
+          if (specificHearing) {
+            const isLatest = item.latestHearingId?._id?.toString() === specificHearing._id?.toString();
+            const tipDate  = toLocalDateStr(item.latestHearingId?.hearingDate);
+            if (isLatest && tipDate && tipDate < today)
+              return <span className="cl-update-pending">Update Pending</span>;
+            return specificHearing.nextHearingDate
+              ? formatDisplay(specificHearing.nextHearingDate)
+              : "—";
+          }
+          return item.nextHearingDate ? formatDisplay(item.nextHearingDate) : "—";
+        })();
+
         return (
           <tr key={item._id} className={isOverdue ? "cl-row-overdue" : ""}>
             <td className="cl-col-date">
@@ -57,10 +80,16 @@ const HearingTable = ({ rows, isPast, isOverdue = false, modalDate, onUpdate, he
               </span>
             </td>
             <td className="cl-col-party">
-              <span className="cl-truncate" title={item.petitioner}>{item.petitioner || "—"}</span>
+              <span className="cl-truncate" title={item.petitioner}>
+                {item.petitioner || "—"}
+                {item.ourClient === "petitioner" && <span className="our-client-mark" title="Our Client"> *</span>}
+              </span>
             </td>
             <td className="cl-col-party">
-              <span className="cl-truncate" title={item.defendant}>{item.defendant || "—"}</span>
+              <span className="cl-truncate" title={item.defendant}>
+                {item.defendant || "—"}
+                {item.ourClient === "defendant" && <span className="our-client-mark" title="Our Client"> *</span>}
+              </span>
             </td>
             <td className="cl-col-judge">
               <span className="cl-truncate" title={item.judgeName}>{item.judgeName || "—"}</span>
@@ -70,9 +99,7 @@ const HearingTable = ({ rows, isPast, isOverdue = false, modalDate, onUpdate, he
             </td>
             {isPast && (
               <td className="cl-col-date">
-                <span className="cl-truncate">
-                  {item.nextHearingDate ? formatDisplay(item.nextHearingDate) : "—"}
-                </span>
+                <span className="cl-truncate">{nextDateNode}</span>
               </td>
             )}
             <td className="cl-col-action">
@@ -107,8 +134,9 @@ const CauseList = () => {
   const _now = new Date();
   const today = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}-${String(_now.getDate()).padStart(2, "0")}`;
 
-  const [cases, setCases]   = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [cases, setCases]       = useState([]);
+  const [allHearings, setAllHearings] = useState([]);
+  const [loading, setLoading]   = useState(true);
 
   const [calYear, setCalYear]   = useState(new Date().getFullYear());
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
@@ -122,10 +150,14 @@ const CauseList = () => {
   const fetchCases = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await api.get("/cases", authHeaders);
-      setCases(res.data.data || []);
+      const [casesRes, hearingsRes] = await Promise.all([
+        api.get("/cases", authHeaders),
+        api.get("/hearings", authHeaders),
+      ]);
+      setCases(casesRes.data.data || []);
+      setAllHearings(hearingsRes.data.data || []);
     } catch (err) {
-      console.error("Failed to fetch cases:", err);
+      console.error("Failed to fetch data:", err);
     } finally {
       setLoading(false);
     }
@@ -179,30 +211,113 @@ const CauseList = () => {
       return new Date(aDate) - new Date(bDate);
     });
 
+  // Count of still-pending (not updated) hearings per past date
+  const pendingCountByDate = {};
+  overdueCases.forEach((c) => {
+    const tipDate = c.latestHearingId
+      ? toLocalDateStr(c.latestHearingId.hearingDate)
+      : toLocalDateStr(c.previousHearingDate);
+    if (tipDate) pendingCountByDate[tipDate] = (pendingCountByDate[tipDate] || 0) + 1;
+  });
+
   /* ── calendar helpers ────────────────────────────────── */
   const countForDate = (ds) => {
     if (!ds) return 0;
-    if (ds === today) return (futureCountByDate[ds] || 0) + overdueCases.length;
-    return ds < today ? (pastCountByDate[ds] || 0) : (futureCountByDate[ds] || 0);
+    if (ds < today) return pendingCountByDate[ds] || 0;
+    return futureCountByDate[ds] || 0;
   };
 
   const casesForDate = (ds) => {
     if (!ds) return [];
     if (ds < today) {
-      // Past: match on last completed hearing date OR overdue tip date
-      return cases.filter((c) => {
-        const prevDate = toLocalDateStr(c.previousHearingDate);
-        const tipDate  = toLocalDateStr(c.latestHearingId?.hearingDate);
-        return prevDate === ds || (tipDate === ds && tipDate < today && tipDate !== prevDate);
-      });
+      // Past: use full hearings list so every historical hearing date is covered
+      const caseIdsOnDate = new Set(
+        allHearings
+          .filter((h) => toLocalDateStr(h.hearingDate) === ds)
+          .map((h) => (h.caseId?._id || h.caseId)?.toString())
+          .filter(Boolean)
+      );
+      return cases.filter((c) => caseIdsOnDate.has(c._id?.toString()));
     }
     // Today / future: match on the chain tip's date
     return cases.filter((c) => toLocalDateStr(c.latestHearingId?.hearingDate) === ds);
   };
 
-  const modalCases   = casesForDate(modalDate);
-  const isPastModal  = modalDate && modalDate < today;
-  const isTodayModal = modalDate === today;
+  const modalCases      = casesForDate(modalDate);
+  const isPastModal     = modalDate && modalDate < today;
+  const isTodayModal    = modalDate === today;
+  const pendingInModal  = overdueCases.filter(
+    (c) => !modalCases.some((m) => m._id === c._id)
+  );
+
+  /* ── print ───────────────────────────────────────────── */
+  const handlePrint = () => {
+    const dateLabel = isTodayModal
+      ? "Today's Hearings"
+      : `${isPastModal ? "Hearings held on" : "Hearings on"} ${formatDisplay(modalDate + "T00:00:00Z")}`;
+
+    const buildRows = (rows, isOv) =>
+      rows.map((item) => {
+        const prevDate = item.previousHearingDate || item.latestHearingId?.hearingDate || null;
+        const verdict  = item.latestHearingId?.hearingVerdict || "—";
+        const dateCol  = isOv
+          ? formatDisplay(item.nextHearingDate || item.latestHearingId?.hearingDate)
+          : isPastModal
+            ? formatDisplay(modalDate + "T00:00:00Z")
+            : formatDisplay(prevDate);
+        const nextCol  = item.nextHearingDate ? formatDisplay(item.nextHearingDate) : "—";
+        const showNext = isPastModal || isOv;
+        const markP    = item.ourClient === "petitioner" ? ' <span style="color:#b5481a;font-weight:700"> *</span>' : "";
+        const markD    = item.ourClient === "defendant"  ? ' <span style="color:#b5481a;font-weight:700"> *</span>' : "";
+        return `<tr>
+          <td>${dateCol}</td>
+          <td>${item.petitioner || "—"}${markP}</td>
+          <td>${item.defendant  || "—"}${markD}</td>
+          <td>${item.judgeName  || "—"}</td>
+          <td style="white-space:pre-wrap">${verdict}</td>
+          ${showNext ? `<td>${nextCol}</td>` : ""}
+        </tr>`;
+      }).join("");
+
+    const schedHeaders = isPastModal
+      ? `<th>Hearing Date</th><th>Petitioner</th><th>Defendant</th><th>Judge</th><th>Verdict</th><th>Next Date</th>`
+      : `<th>Prev Hearing Date</th><th>Petitioner</th><th>Defendant</th><th>Judge</th><th>Verdict</th>`;
+
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>${dateLabel}</title>
+  <style>
+    body  { font-family: Georgia, serif; color: #222; padding: 28px 36px; }
+    h2   { color: #6f4a36; margin: 0 0 2px; font-size: 1.3rem; }
+    .sub { color: #888; font-size: 0.82rem; margin: 0 0 20px; }
+    h3   { font-size: 0.95rem; margin-bottom: 8px; color: #444; }
+    table{ width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th   { background: #fdf5f0; color: #6f4a36; font-weight: 600; padding: 8px 12px;
+           text-align: left; border-bottom: 2px solid #eee3dc; }
+    td   { padding: 8px 12px; border-bottom: 1px solid #f0e8e2; vertical-align: top; }
+    @media print { body { padding: 0; } }
+  </style>
+</head>
+<body>
+  <h2>${dateLabel}</h2>
+  <p class="sub">RGLawz — Cause List &nbsp;·&nbsp; * Our Client</p>
+  ${modalCases.length > 0
+    ? `<h3>Scheduled Hearings (${modalCases.length})</h3>
+       <table><thead><tr>${schedHeaders}</tr></thead>
+       <tbody>${buildRows(modalCases, false)}</tbody></table>`
+    : `<p style="color:#aaa">No hearings scheduled for this date.</p>`}
+
+</body>
+</html>`;
+
+    const w = window.open("", "_blank");
+    w.document.write(html);
+    w.document.close();
+    w.print();
+  };
 
   const firstDay    = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
@@ -312,8 +427,8 @@ const CauseList = () => {
                   <>
                     <span className="cl-day-num">{day}</span>
                     {count > 0 && (
-                      <span className={`cl-case-badge ${isPast ? "cl-badge-past" : ""}`}>
-                        {count} case{count !== 1 ? "s" : ""}
+                      <span className={`cl-case-badge ${isPast ? "cl-badge-pending" : ""}`}>
+                        {isPast ? `${count} pending` : count}
                       </span>
                     )}
                   </>
@@ -335,20 +450,24 @@ const CauseList = () => {
                   : `${isPastModal ? "Hearings held on" : "Hearings on"} ${formatDisplay(modalDate + "T00:00:00Z")}`}
                 <span className="cl-list-count">{modalCases.length}</span>
               </h3>
-              <button className="close-btn" onClick={() => setModalDate(null)}>×</button>
+              <div className="cl-modal-header-actions">
+                <button className="cl-print-btn" title="Print cause list" onClick={handlePrint}>
+                  🖨 Print
+                </button>
+                <button className="close-btn" onClick={() => setModalDate(null)}>×</button>
+              </div>
             </div>
             {loading ? (
               <p className="cl-empty">Loading…</p>
             ) : (
               <div className="cl-table-wrapper">
-                {isTodayModal && (
-                  <div className="cl-section-label">
-                    Today's Schedule
-                    <span className="cl-list-count">{modalCases.length}</span>
-                  </div>
-                )}
+                {/* Scheduled hearings for this date */}
+                <div className="cl-section-label">
+                  {isTodayModal ? "Today's Schedule" : isPastModal ? "Hearings on this Date" : "Scheduled Hearings"}
+                  <span className="cl-list-count">{modalCases.length}</span>
+                </div>
                 {modalCases.length === 0 ? (
-                  <p className="cl-empty">No hearings found for this date.</p>
+                  <p className="cl-empty">No hearings scheduled for this date.</p>
                 ) : (
                   <HearingTable
                     rows={modalCases}
@@ -356,7 +475,27 @@ const CauseList = () => {
                     modalDate={modalDate}
                     onUpdate={handleUpdateClick}
                     hearingLoading={hearingLoading}
+                    allHearings={allHearings}
+                    today={today}
                   />
+                )}
+
+                {/* Pending (overdue) cases */}
+                {pendingInModal.length > 0 && (
+                  <>
+                    <div className="cl-section-label cl-section-overdue">
+                      Pending Updates from Before
+                      <span className="cl-list-count cl-count-overdue">{pendingInModal.length}</span>
+                    </div>
+                    <HearingTable
+                      rows={pendingInModal}
+                      isPast={true}
+                      isOverdue={true}
+                      modalDate={null}
+                      onUpdate={handleUpdateClick}
+                      hearingLoading={hearingLoading}
+                    />
+                  </>
                 )}
               </div>
             )}

@@ -186,16 +186,38 @@ const CaseManagement = () => {
                       </div>
                     </td>
                     <td>
-                      {item.petitioner}
-                      {item.ourClient === "petitioner" && (
-                        <span className="our-client-mark" title="Our Client"> *</span>
-                      )}
+                      <div className="inline-edit-cell">
+                        <span>
+                          {item.petitioner || <em className="empty-cell-hint">Not set</em>}
+                          {item.ourClient === "petitioner" && (
+                            <span className="our-client-mark" title="Our Client"> *</span>
+                          )}
+                        </span>
+                        <button
+                          className="pencil-btn"
+                          title="Edit Parties"
+                          onClick={() => setQuickEdit({ caseData: item, mode: "parties" })}
+                        >
+                          ✎
+                        </button>
+                      </div>
                     </td>
                     <td>
-                      {item.defendant}
-                      {item.ourClient === "defendant" && (
-                        <span className="our-client-mark" title="Our Client"> *</span>
-                      )}
+                      <div className="inline-edit-cell">
+                        <span>
+                          {item.defendant || <em className="empty-cell-hint">Not set</em>}
+                          {item.ourClient === "defendant" && (
+                            <span className="our-client-mark" title="Our Client"> *</span>
+                          )}
+                        </span>
+                        <button
+                          className="pencil-btn"
+                          title="Edit Parties"
+                          onClick={() => setQuickEdit({ caseData: item, mode: "parties" })}
+                        >
+                          ✎
+                        </button>
+                      </div>
                     </td>
                     <td>{item.courtName || "N/A"}</td>
                     <td>
