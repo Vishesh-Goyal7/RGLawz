@@ -5,6 +5,7 @@ import CaseManagement from "../components/CaseManagement";
 import HearingManagement from "../components/HearingManagement";
 import UserManagement from "../components/UserManagement";
 import CauseList from "../components/CauseList";
+import ClientAccounts from "../components/ClientAccounts";
 import "../styles/DashboardPage.css";
 
 const WorkspacePage = ({ setIsAuthenticated }) => {
@@ -18,6 +19,8 @@ const WorkspacePage = ({ setIsAuthenticated }) => {
         return <CauseList />;
       case "hearings":
         return <HearingManagement />;
+      case "clientAccounts":
+        return <ClientAccounts />;
       case "users":
         return <UserManagement />;
       default:
