@@ -9,6 +9,7 @@ const Sidebar = ({ activeSection, setActiveSection }) => {
     { key: "causeList", label: "Cause List" },
     { key: "hearings", label: "Hearings" },
     { key: "clientAccounts", label: "Client Accounts" },
+    { key: "clientDetails", label: "Client Details" },
     ...(user.role === "admin" ? [{ key: "users", label: "Users" }] : []),
   ];
 

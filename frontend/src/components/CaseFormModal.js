@@ -25,9 +25,13 @@ const CaseFormModal = ({
     caseStatus: "active",
     nextHearingDate: "",
     internalNotes: "",
+    clientEmail: "",
+    clientPhone: "",
+    clientAddress: "",
   });
 
   const [loading, setLoading] = useState(false);
+  const [existingClientDetailId, setExistingClientDetailId] = useState(null);
 
   // For new cases, fetch next registration number
   useEffect(() => {
@@ -43,7 +47,8 @@ const CaseFormModal = ({
   useEffect(() => {
     if (editingCase) {
       setNextRegNumber(editingCase.registrationNumber ?? "—");
-      setFormData({
+      setFormData((prev) => ({
+        ...prev,
         caseNumber: editingCase.caseNumber || "",
         judgeName: editingCase.judgeName || "",
         courtName: editingCase.courtName || "",
@@ -63,8 +68,26 @@ const CaseFormModal = ({
           ? new Date(editingCase.nextHearingDate).toISOString().split("T")[0]
           : "",
         internalNotes: editingCase.internalNotes || "",
-      });
+      }));
+
+      // Fetch existing client detail for this case
+      api.get(`/client-details/case/${editingCase._id}`, authHeaders)
+        .then((res) => {
+          const d = res.data.data;
+          setExistingClientDetailId(d._id);
+          setFormData((prev) => ({
+            ...prev,
+            clientEmail: d.email || "",
+            clientPhone: d.phone || "",
+            clientAddress: d.address || "",
+          }));
+        })
+        .catch(() => {
+          // No client detail yet for this case — that's fine
+          setExistingClientDetailId(null);
+        });
     }
+  // eslint-disable-next-line
   }, [editingCase]);
 
   const handleChange = (e) => {
@@ -104,10 +127,28 @@ const CaseFormModal = ({
     try {
       setLoading(true);
 
+      const clientName = formData.ourClient === "petitioner"
+        ? formData.petitioner.trim()
+        : formData.defendant.trim();
+
+      let caseId;
       if (editingCase) {
         await api.put(`/cases/${editingCase._id}`, buildPayload(), authHeaders);
+        caseId = editingCase._id;
       } else {
-        await api.post("/cases", buildPayload(), authHeaders);
+        const res = await api.post("/cases", buildPayload(), authHeaders);
+        caseId = res.data.data._id;
+      }
+
+      // Save client details (upsert via POST — backend handles create-or-update)
+      if (clientName) {
+        await api.post("/client-details", {
+          caseId,
+          name: clientName,
+          email: formData.clientEmail,
+          phone: formData.clientPhone,
+          address: formData.clientAddress,
+        }, authHeaders);
       }
 
       await onSuccess();
@@ -296,6 +337,58 @@ const CaseFormModal = ({
               onChange={handleChange}
               rows="4"
               placeholder="e.g. 50% advance, balance on disposal..."
+            />
+          </div>
+
+          {/* Client Details section */}
+          <div className="form-section-divider full-width">
+            <span>Client Details</span>
+          </div>
+
+          <div className="form-group">
+            <label>Client Name <span className="required-mark">*</span></label>
+            <input
+              type="text"
+              value={
+                formData.ourClient === "petitioner"
+                  ? formData.petitioner
+                  : formData.defendant
+              }
+              readOnly
+              className="readonly-input"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Phone</label>
+            <input
+              type="text"
+              name="clientPhone"
+              value={formData.clientPhone}
+              onChange={handleChange}
+              placeholder="e.g. 9810000000"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Email</label>
+            <input
+              type="email"
+              name="clientEmail"
+              value={formData.clientEmail}
+              onChange={handleChange}
+              placeholder="e.g. client@email.com"
+            />
+          </div>
+
+          <div className="form-group full-width">
+            <label>Address</label>
+            <textarea
+              name="clientAddress"
+              value={formData.clientAddress}
+              onChange={handleChange}
+              rows="2"
+              placeholder="Client's full address"
             />
           </div>
 

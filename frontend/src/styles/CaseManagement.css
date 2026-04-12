@@ -235,6 +235,26 @@
   gap: 10px;
 }
 
+.form-section-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #6f4a36;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 6px;
+}
+
+.form-section-divider::before,
+.form-section-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #eee3dc;
+}
+
 .history-subtitle {
   color: #666;
   margin-top: 4px;

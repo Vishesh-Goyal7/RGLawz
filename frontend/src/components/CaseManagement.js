@@ -240,13 +240,6 @@ const CaseManagement = () => {
                             month: "2-digit",
                             year: "numeric",
                           }).format(new Date(item.previousHearingDate))
-                        : item.latestHearingId?.hearingDate
-                        ? new Intl.DateTimeFormat("en-IN", {
-                            timeZone: "Asia/Kolkata",
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                          }).format(new Date(item.latestHearingId.hearingDate))
                         : "N/A"}
                     </td>
                     <td>
