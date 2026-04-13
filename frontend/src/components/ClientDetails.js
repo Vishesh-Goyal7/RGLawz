@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import api from "../services/api";
+import DocumentsModal from "./DocumentsModal";
+import BillsModal from "./BillsModal";
 import "../styles/ClientDetails.css";
 
 const fmt = (dateVal) =>
@@ -102,7 +104,7 @@ const EditClientModal = ({ client, authHeaders, onClose, onSuccess }) => {
 };
 
 /* ── Case & Account Detail Modal ──────────────────────── */
-const CaseDetailModal = ({ client, payments, onClose, onEdit }) => {
+const CaseDetailModal = ({ client, payments, onClose, onEdit, onDocuments, onBills }) => {
   const c = client.caseId;
   if (!c) return null;
 
@@ -117,6 +119,8 @@ const CaseDetailModal = ({ client, payments, onClose, onEdit }) => {
         <div className="modal-header">
           <h3>Client — {client.name}</h3>
           <div style={{ display: "flex", gap: 10 }}>
+            <button className="cl-print-btn" onClick={onDocuments}>Documents</button>
+            <button className="cl-print-btn" onClick={onBills}>View Bills</button>
             <button className="cl-print-btn" onClick={onEdit}>Edit Details</button>
             <button className="close-btn" onClick={onClose}>×</button>
           </div>
@@ -251,8 +255,10 @@ const ClientDetails = () => {
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState("");
 
-  const [detailClient, setDetailClient] = useState(null);
-  const [editClient, setEditClient]     = useState(null);
+  const [detailClient, setDetailClient]       = useState(null);
+  const [editClient, setEditClient]           = useState(null);
+  const [documentsClient, setDocumentsClient] = useState(null);
+  const [billsClient, setBillsClient]         = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -360,10 +366,9 @@ const ClientDetails = () => {
           client={detailClient}
           payments={payments}
           onClose={() => setDetailClient(null)}
-          onEdit={() => {
-            setEditClient(detailClient);
-            setDetailClient(null);
-          }}
+          onEdit={() => { setEditClient(detailClient); setDetailClient(null); }}
+          onDocuments={() => { setDocumentsClient(detailClient); setDetailClient(null); }}
+          onBills={() => { setBillsClient(detailClient); setDetailClient(null); }}
         />
       )}
 
@@ -373,6 +378,22 @@ const ClientDetails = () => {
           authHeaders={authHeaders}
           onClose={() => setEditClient(null)}
           onSuccess={fetchData}
+        />
+      )}
+
+      {documentsClient && (
+        <DocumentsModal
+          caseData={documentsClient.caseId}
+          authHeaders={authHeaders}
+          onClose={() => setDocumentsClient(null)}
+        />
+      )}
+
+      {billsClient && (
+        <BillsModal
+          client={billsClient}
+          authHeaders={authHeaders}
+          onClose={() => setBillsClient(null)}
         />
       )}
     </div>
