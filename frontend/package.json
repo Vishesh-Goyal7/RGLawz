@@ -1,6 +1,6 @@
 {
   "name": "rglawz",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "main": "build/electron.js",
   "homepage": "./",
@@ -35,12 +35,14 @@
   "build": {
     "appId": "com.rglawz.app",
     "productName": "RGLawz",
+    "icon": "public/logo.icns",
     "files": [
       "build/**/*"
     ],
     "mac": {
       "target": "dmg",
-      "category": "public.app-category.business"
+      "category": "public.app-category.business",
+      "icon": "public/logo.icns"
     },
     "publish": [
       {
