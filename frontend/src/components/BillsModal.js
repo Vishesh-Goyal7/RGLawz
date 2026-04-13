@@ -10,7 +10,6 @@ const fmtAmount = (n) =>
 const fmtDate = (d) =>
   d ? new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(d)) : "—";
 
-const toInputDate = (d) => (d ? new Date(d).toISOString().split("T")[0] : "");
 
 const BillsModal = ({ client, authHeaders, onClose }) => {
   const isAdmin = JSON.parse(localStorage.getItem("user") || "{}").role === "admin";

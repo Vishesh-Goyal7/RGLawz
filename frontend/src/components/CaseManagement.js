@@ -11,7 +11,6 @@ const CaseManagement = () => {
   const token = localStorage.getItem("token");
 
   const [cases, setCases] = useState([]);
-  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [searchText, setSearchText] = useState("");
@@ -44,15 +43,6 @@ const CaseManagement = () => {
       console.error("Failed to fetch cases:", error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchUsers = async () => {
-    try {
-      const res = await api.get("/users", authHeaders);
-      setUsers(res.data.data || []);
-    } catch (error) {
-      console.error("Failed to fetch users:", error);
     }
   };
 

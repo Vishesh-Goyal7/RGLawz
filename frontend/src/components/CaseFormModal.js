@@ -31,8 +31,6 @@ const CaseFormModal = ({
   });
 
   const [loading, setLoading] = useState(false);
-  const [existingClientDetailId, setExistingClientDetailId] = useState(null);
-
   // For new cases, fetch next registration number
   useEffect(() => {
     if (!editingCase) {
@@ -74,7 +72,6 @@ const CaseFormModal = ({
       api.get(`/client-details/case/${editingCase._id}`, authHeaders)
         .then((res) => {
           const d = res.data.data;
-          setExistingClientDetailId(d._id);
           setFormData((prev) => ({
             ...prev,
             clientEmail: d.email || "",
@@ -84,7 +81,6 @@ const CaseFormModal = ({
         })
         .catch(() => {
           // No client detail yet for this case — that's fine
-          setExistingClientDetailId(null);
         });
     }
   // eslint-disable-next-line
