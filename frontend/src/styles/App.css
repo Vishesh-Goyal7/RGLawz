@@ -20,7 +20,7 @@
   flex-shrink: 0;
 }
 
-.app-root > *:not(.office-banner) {
+.app-root > *:not(.office-banner):not(.app-footer) {
   flex: 1;
   min-height: 0;
 }

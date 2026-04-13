@@ -1,13 +1,16 @@
 {
-  "name": "frontend",
-  "version": "0.1.0",
+  "name": "rglawz",
+  "version": "1.0.0",
   "private": true,
+  "main": "build/electron.js",
+  "homepage": "./",
   "dependencies": {
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.14.0",
+    "electron-updater": "^6.8.3",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.14.0",
@@ -18,12 +21,35 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "electron:dev": "electron .",
+    "electron:build:mac": "react-scripts build && electron-builder --mac",
+    "electron:publish:mac": "react-scripts build && electron-builder --mac --publish always"
   },
   "eslintConfig": {
     "extends": [
       "react-app",
       "react-app/jest"
+    ]
+  },
+  "build": {
+    "appId": "com.rglawz.app",
+    "productName": "RGLawz",
+    "files": [
+      "build/**/*"
+    ],
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.business"
+    },
+    "publish": [
+      {
+        "provider": "s3",
+        "bucket": "rglawz",
+        "region": "ap-south-1",
+        "path": "/releases",
+        "acl": null
+      }
     ]
   },
   "browserslist": {
@@ -37,5 +63,9 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "electron": "^41.2.0",
+    "electron-builder": "^26.8.1"
   }
 }
