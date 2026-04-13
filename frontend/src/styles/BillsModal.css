@@ -1,0 +1,235 @@
+/* ── modal shell ─────────────────────────────────────── */
+.bm-modal {
+  width: 88vw;
+  max-width: 960px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.bm-sub {
+  font-size: 0.82rem;
+  font-weight: 400;
+  color: #aaa;
+  margin-left: 6px;
+}
+
+/* ── body ────────────────────────────────────────────── */
+.bm-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 20px 20px;
+  min-height: 0;
+}
+
+/* ── summary stats ───────────────────────────────────── */
+.bm-summary {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 4px;
+  margin-top: 4px;
+}
+
+.bm-stat {
+  flex: 1;
+  background: #fdf5f0;
+  border: 1px solid #eee3dc;
+  border-radius: 10px;
+  padding: 10px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.bm-stat-due  { background: #fff8f7; border-color: #f5d0c8; }
+.bm-stat-cleared { background: #f0faf0; border-color: #c8e6c9; }
+
+.bm-stat-val {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #6f4a36;
+}
+
+.bm-stat-due .bm-stat-val { color: #b5341a; }
+.bm-stat-cleared .bm-stat-val { color: #2e7d32; }
+
+.bm-stat-lbl {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #aaa;
+}
+
+/* ── section labels ──────────────────────────────────── */
+.bm-section-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6f4a36;
+  border-top: 1px solid #eee3dc;
+  padding-top: 14px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.bm-add-label {
+  color: #4a7a4a;
+  border-top-color: #d0e8d0;
+  margin-top: 18px;
+}
+
+.bm-count {
+  background: #f0e6df;
+  color: #9d5e3d;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 20px;
+  padding: 2px 8px;
+}
+
+.bm-empty {
+  color: #aaa;
+  font-size: 0.9rem;
+  padding: 10px 0 16px;
+}
+
+/* ── invoice table ───────────────────────────────────── */
+.bm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.bm-table thead th {
+  background: #fdf5f0;
+  color: #6f4a36;
+  font-weight: 600;
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 2px solid #eee3dc;
+  white-space: nowrap;
+}
+
+.bm-table tbody tr {
+  border-bottom: 1px solid #f3ece8;
+  transition: background 0.12s;
+}
+
+.bm-table tbody tr:last-child { border-bottom: none; }
+.bm-table tbody tr:hover { background: #fdf8f5; }
+
+.bm-table td {
+  padding: 9px 12px;
+  vertical-align: middle;
+}
+
+.bm-amount { font-weight: 600; color: #333; }
+.bm-muted { color: #bbb; font-style: normal; }
+
+/* ── status select ───────────────────────────────────── */
+.bm-status-select {
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  border: none;
+  appearance: none;
+  -webkit-appearance: none;
+  text-align: center;
+}
+
+.bm-status-due      { background: #fff3cd; color: #856404; }
+.bm-status-overdue  { background: #fde8e3; color: #b5341a; }
+.bm-status-cleared  { background: #e8f5e9; color: #2e7d32; }
+
+/* ── row actions ─────────────────────────────────────── */
+.bm-row-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.bm-view-btn {
+  background: #f0e6df;
+  color: #6f4a36;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.bm-view-btn:hover { background: #eee3dc; }
+.bm-view-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.bm-delete-btn {
+  background: #fde8e3;
+  color: #b5341a;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.bm-delete-btn:hover { background: #f5d0c8; }
+.bm-delete-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── add form ────────────────────────────────────────── */
+.bm-add-form { margin-top: 4px; }
+
+.bm-form-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.bm-form-row .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+  min-width: 140px;
+}
+
+.bm-form-row label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #555;
+}
+
+.bm-form-row input,
+.bm-form-row select {
+  border: 1px solid #ddd4ce;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 0.88rem;
+  color: #333;
+  outline: none;
+  font-family: inherit;
+}
+
+.bm-form-row input:focus,
+.bm-form-row select:focus { border-color: #9d5e3d; }
+
+.bm-file-input { cursor: pointer; }
+.bm-desc-group { flex: 2; }
+
+.bm-add-btn {
+  white-space: nowrap;
+  align-self: flex-end;
+  padding: 8px 20px;
+}

@@ -3,6 +3,7 @@ import api from "../services/api";
 import CaseFormModal from "./CaseFormModal";
 import CaseHearingsModal from "./CaseHearingsModal";
 import CaseQuickEditModal from "./CaseQuickEditModal";
+import DocumentsModal from "./DocumentsModal";
 import "../styles/CaseManagement.css";
 
 const CaseManagement = () => {
@@ -21,6 +22,7 @@ const CaseManagement = () => {
   const [hearingsCase, setHearingsCase] = useState(null);
   const [isHearingsOpen, setIsHearingsOpen] = useState(false);
   const [quickEdit, setQuickEdit] = useState(null); // { caseData, mode: "court"|"caseNumber" }
+  const [documentsCase, setDocumentsCase] = useState(null);
 
   const authHeaders = {
     headers: {
@@ -68,6 +70,7 @@ const CaseManagement = () => {
     setIsHearingsOpen(false);
     setHearingsCase(null);
     setQuickEdit(null);
+    setDocumentsCase(null);
   };
 
   const handleDeleteCase = async (caseId) => {
@@ -240,13 +243,6 @@ const CaseManagement = () => {
                             month: "2-digit",
                             year: "numeric",
                           }).format(new Date(item.previousHearingDate))
-                        : item.latestHearingId?.hearingDate
-                        ? new Intl.DateTimeFormat("en-IN", {
-                            timeZone: "Asia/Kolkata",
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                          }).format(new Date(item.latestHearingId.hearingDate))
                         : "N/A"}
                     </td>
                     <td>
@@ -266,6 +262,13 @@ const CaseManagement = () => {
                           onClick={() => openHearingsModal(item)}
                         >
                           Hearings
+                        </button>
+
+                        <button
+                          className="hearing-link-btn"
+                          onClick={() => setDocumentsCase(item)}
+                        >
+                          Documents
                         </button>
 
                         {storedUser.role === "admin" && (
@@ -310,6 +313,14 @@ const CaseManagement = () => {
           authHeaders={authHeaders}
           onClose={closeModals}
           onSuccess={fetchCases}
+        />
+      )}
+
+      {documentsCase && (
+        <DocumentsModal
+          caseData={documentsCase}
+          authHeaders={authHeaders}
+          onClose={closeModals}
         />
       )}
     </div>

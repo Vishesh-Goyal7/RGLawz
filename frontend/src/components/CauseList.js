@@ -39,7 +39,7 @@ const HearingTable = ({ rows, isPast, isOverdue = false, modalDate, onUpdate, he
     </thead>
     <tbody>
       {rows.map((item) => {
-        const prevDate = item.previousHearingDate || item.latestHearingId?.hearingDate || null;
+        const prevDate = item.previousHearingDate || null;
         const verdict  = item.latestHearingId?.hearingVerdict || "—";
         // isOverdueTip: case appears on this past date because its chain tip (not a completed hearing) is overdue
         const isOverdueTip = isPast && toLocalDateStr(item.latestHearingId?.hearingDate) === modalDate;
@@ -72,11 +72,7 @@ const HearingTable = ({ rows, isPast, isOverdue = false, modalDate, onUpdate, he
           <tr key={item._id} className={isOverdue ? "cl-row-overdue" : ""}>
             <td className="cl-col-date">
               <span className="cl-truncate">
-                {isOverdue
-                  ? formatDisplay(item.nextHearingDate || item.latestHearingId?.hearingDate)
-                  : isPast
-                    ? formatDisplay(modalDate + "T00:00:00Z")
-                    : formatDisplay(prevDate)}
+                {formatDisplay(prevDate)}
               </span>
             </td>
             <td className="cl-col-party">
@@ -252,63 +248,204 @@ const CauseList = () => {
 
   /* ── print ───────────────────────────────────────────── */
   const handlePrint = () => {
-    const dateLabel = isTodayModal
-      ? "Today's Hearings"
-      : `${isPastModal ? "Hearings held on" : "Hearings on"} ${formatDisplay(modalDate + "T00:00:00Z")}`;
+    const displayDate = formatDisplay(modalDate + "T00:00:00Z");
 
-    const buildRows = (rows, isOv) =>
+    const buildRows = (rows) =>
       rows.map((item) => {
-        const prevDate = item.previousHearingDate || item.latestHearingId?.hearingDate || null;
-        const verdict  = item.latestHearingId?.hearingVerdict || "—";
-        const dateCol  = isOv
-          ? formatDisplay(item.nextHearingDate || item.latestHearingId?.hearingDate)
-          : isPastModal
-            ? formatDisplay(modalDate + "T00:00:00Z")
-            : formatDisplay(prevDate);
-        const nextCol  = item.nextHearingDate ? formatDisplay(item.nextHearingDate) : "—";
-        const showNext = isPastModal || isOv;
-        const markP    = item.ourClient === "petitioner" ? ' <span style="color:#b5481a;font-weight:700"> *</span>' : "";
-        const markD    = item.ourClient === "defendant"  ? ' <span style="color:#b5481a;font-weight:700"> *</span>' : "";
+        const prevDate = item.previousHearingDate
+          ? formatDisplay(item.previousHearingDate)
+          : "N/A";
+        const petitioner = item.petitioner || "—";
+        const defendant  = item.defendant  || "—";
+        const markP = item.ourClient === "petitioner"
+          ? ' <span style="color:red;font-weight:700">*</span>' : "";
+        const markD = item.ourClient === "defendant"
+          ? ' <span style="color:red;font-weight:700">*</span>' : "";
+        const parties = `${petitioner}${markP} V/S ${defendant}${markD}`;
         return `<tr>
-          <td>${dateCol}</td>
-          <td>${item.petitioner || "—"}${markP}</td>
-          <td>${item.defendant  || "—"}${markD}</td>
-          <td>${item.judgeName  || "—"}</td>
-          <td style="white-space:pre-wrap">${verdict}</td>
-          ${showNext ? `<td>${nextCol}</td>` : ""}
+          <td>${prevDate}</td>
+          <td>${item.judgeName || "—"}</td>
+          <td>${parties}</td>
+          <td></td>
+          <td></td>
         </tr>`;
       }).join("");
-
-    const schedHeaders = isPastModal
-      ? `<th>Hearing Date</th><th>Petitioner</th><th>Defendant</th><th>Judge</th><th>Verdict</th><th>Next Date</th>`
-      : `<th>Prev Hearing Date</th><th>Petitioner</th><th>Defendant</th><th>Judge</th><th>Verdict</th>`;
-
 
     const html = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8"/>
-  <title>${dateLabel}</title>
+  <title>Cause List - ${displayDate}</title>
   <style>
-    body  { font-family: Georgia, serif; color: #222; padding: 28px 36px; }
-    h2   { color: #6f4a36; margin: 0 0 2px; font-size: 1.3rem; }
-    .sub { color: #888; font-size: 0.82rem; margin: 0 0 20px; }
-    h3   { font-size: 0.95rem; margin-bottom: 8px; color: #444; }
-    table{ width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-    th   { background: #fdf5f0; color: #6f4a36; font-weight: 600; padding: 8px 12px;
-           text-align: left; border-bottom: 2px solid #eee3dc; }
-    td   { padding: 8px 12px; border-bottom: 1px solid #f0e8e2; vertical-align: top; }
-    @media print { body { padding: 0; } }
+    @page { margin: 0; }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body { height: 100%; }
+
+    body {
+      font-family: 'Bookman Old Style', 'Book Antiqua', Georgia, serif;
+      font-size: 12pt;
+      color: #000;
+    }
+
+    /* ── outer page layout table ── */
+    .page-wrap {
+      width: 100%;
+      min-height: 100%;
+      border-collapse: collapse;
+    }
+
+    /* thead cell: firm header */
+    .page-wrap > thead > tr > td {
+      padding: 24px 40px 14px;
+      text-align: center;
+    }
+
+    /* tfoot cell: office footer — sits at bottom of every page */
+    .page-wrap > tfoot > tr > td {
+      padding: 0 40px 18px;
+      text-align: center;
+    }
+
+    /* tbody cell: hearing data */
+    .page-wrap > tbody > tr > td {
+      padding: 0 40px;
+      vertical-align: top;
+    }
+
+    /* ── firm header ── */
+    .firm-name {
+      font-family: 'Monotype Corsiva', 'Apple Chancery', cursive;
+      font-size: 36pt;
+      font-weight: bold;
+      display: block;
+      line-height: 1.15;
+    }
+
+    .firm-tagline {
+      font-family: 'Monotype Corsiva', 'Apple Chancery', cursive;
+      font-size: 13pt;
+      font-weight: bold;
+      font-style: italic;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .title-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      position: relative;
+    }
+
+    .cause-title {
+      font-family: 'Bookman Old Style', 'Book Antiqua', Georgia, serif;
+      font-size: 12pt;
+      font-weight: bold;
+      text-decoration: underline;
+    }
+
+    .cause-date {
+      font-family: 'Bookman Old Style', 'Book Antiqua', Georgia, serif;
+      font-size: 12pt;
+      position: absolute;
+      right: 0;
+    }
+
+    /* ── hearing data table ── */
+    .hearing-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: 'Bookman Old Style', 'Book Antiqua', Georgia, serif;
+      font-size: 12pt;
+      margin-top: 12px;
+    }
+
+    .hearing-table th {
+      font-weight: bold;
+      text-align: left;
+      padding: 6px 10px;
+      border: none;
+    }
+
+    .hearing-table td {
+      padding: 6px 10px;
+      border: none;
+      vertical-align: top;
+    }
+
+    /* ── footer ── */
+    .footer-line {
+      border: none;
+      border-top: 2px solid #000;
+      margin-bottom: 6px;
+    }
+
+    .footer-office {
+      font-family: 'Monotype Corsiva', 'Apple Chancery', cursive;
+      font-size: 17pt;
+      font-weight: bold;
+      display: block;
+      line-height: 1.3;
+    }
+
+    .footer-info {
+      font-family: 'Monotype Corsiva', 'Apple Chancery', cursive;
+      font-size: 13pt;
+      display: block;
+      line-height: 1.45;
+    }
+
+    .footer-info a {
+      color: #000;
+      text-decoration: none;
+    }
   </style>
 </head>
 <body>
-  <h2>${dateLabel}</h2>
-  <p class="sub">RGLawz — Cause List &nbsp;·&nbsp; * Our Client</p>
-  ${modalCases.length > 0
-    ? `<h3>Scheduled Hearings (${modalCases.length})</h3>
-       <table><thead><tr>${schedHeaders}</tr></thead>
-       <tbody>${buildRows(modalCases, false)}</tbody></table>`
-    : `<p style="color:#aaa">No hearings scheduled for this date.</p>`}
+
+  <table class="page-wrap">
+    <thead>
+      <tr><td>
+        <span class="firm-name">RGLawz</span>
+        <span class="firm-tagline">ADVOCATES &amp; LEGAL CONSULTANTS</span>
+        <div class="title-row">
+          <span class="cause-title">CAUSE LIST</span>
+          <span class="cause-date">${displayDate}</span>
+        </div>
+      </td></tr>
+    </thead>
+    <tfoot>
+      <tr><td>
+        <hr class="footer-line"/>
+        <span class="footer-office">Office</span>
+        <span class="footer-info">17A/35, 1st Floor, West Punjabi Bagh, New Delhi-110026</span>
+        <span class="footer-info">9810910312</span>
+        <span class="footer-info"><a href="mailto:officeofrglawz@gmail.com">officeofrglawz@gmail.com</a></span>
+      </td></tr>
+    </tfoot>
+    <tbody>
+      <tr><td>
+        <table class="hearing-table">
+          <thead>
+            <tr>
+              <th>PDOH</th>
+              <th>Judge</th>
+              <th>Parties</th>
+              <th>NDOH</th>
+              <th>Mark To</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${modalCases.length > 0
+              ? buildRows(modalCases)
+              : `<tr><td colspan="5" style="color:#aaa;padding-top:12px">No hearings scheduled for this date.</td></tr>`}
+          </tbody>
+        </table>
+      </td></tr>
+    </tbody>
+  </table>
 
 </body>
 </html>`;
