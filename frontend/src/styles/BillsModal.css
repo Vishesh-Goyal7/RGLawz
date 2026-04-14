@@ -233,3 +233,38 @@
   align-self: flex-end;
   padding: 8px 20px;
 }
+
+@media (max-width: 600px) {
+  .bm-modal {
+    border-radius: 18px 18px 0 0;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .bm-summary {
+    flex-wrap: wrap;
+  }
+
+  .bm-table {
+    font-size: 0.82rem;
+  }
+
+  .bm-table thead th,
+  .bm-table td {
+    padding: 7px 8px;
+  }
+
+  .bm-form-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .bm-form-row .form-group {
+    min-width: unset;
+    width: 100%;
+  }
+
+  .bm-add-btn {
+    align-self: flex-start;
+  }
+}

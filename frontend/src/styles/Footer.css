@@ -54,3 +54,19 @@
   color: #c4956a;
   text-decoration: underline;
 }
+
+@media (max-width: 900px) {
+  .app-footer {
+    justify-content: center;
+  }
+
+  .footer-credit {
+    position: static;
+    transform: none;
+  }
+
+  .footer-contact {
+    display: none;
+  }
+}
+

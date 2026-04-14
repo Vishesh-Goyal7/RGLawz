@@ -201,3 +201,34 @@
   margin-bottom: 0;
   padding: 8px 20px;
 }
+
+@media (max-width: 600px) {
+  .dm-modal {
+    border-radius: 18px 18px 0 0;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .dm-table {
+    font-size: 0.82rem;
+  }
+
+  .dm-table thead th,
+  .dm-table td {
+    padding: 7px 8px;
+  }
+
+  .dm-upload-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .dm-upload-row .form-group {
+    min-width: unset;
+    width: 100%;
+  }
+
+  .dm-upload-btn {
+    align-self: flex-start;
+  }
+}

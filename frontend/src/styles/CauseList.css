@@ -415,3 +415,91 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+@media (max-width: 900px) {
+  .cl-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+  }
+
+  .cl-overdue-banner {
+    padding: 12px 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .cl-cal-grid {
+    gap: 3px;
+  }
+
+  .cl-day-name {
+    font-size: 0.6rem;
+    letter-spacing: 0.01em;
+  }
+
+  .cl-day-cell {
+    padding: 5px 3px;
+    min-height: 48px;
+    gap: 3px;
+    border-radius: 7px;
+  }
+
+  .cl-day-num {
+    font-size: 0.78rem;
+  }
+
+  .cl-day-today .cl-day-num {
+    width: 20px;
+    height: 20px;
+    font-size: 0.72rem;
+  }
+
+  .cl-case-badge {
+    font-size: 0.58rem;
+    padding: 1px 4px;
+    border-radius: 6px;
+  }
+
+  .cl-date-modal {
+    border-radius: 18px 18px 0 0;
+    width: 100%;
+    max-width: 100%;
+    min-height: 60vh;
+    max-height: 92vh;
+  }
+
+  .cl-table {
+    font-size: 0.8rem;
+  }
+
+  .cl-table thead th,
+  .cl-table td {
+    padding: 7px 8px;
+  }
+
+  .cl-col-date  { width: 80px; }
+  .cl-col-party { width: 95px; }
+  .cl-col-judge { width: 75px; }
+
+  .cl-overdue-banner {
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+    padding: 10px 16px;
+  }
+
+  .cl-overdue-shine {
+    font-size: 0.9rem;
+  }
+
+  .cl-modal-header-actions {
+    gap: 6px;
+  }
+
+  .cl-print-btn {
+    padding: 5px 10px;
+    font-size: 0.78rem;
+  }
+}

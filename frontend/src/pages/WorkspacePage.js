@@ -11,6 +11,7 @@ import "../styles/DashboardPage.css";
 
 const WorkspacePage = ({ setIsAuthenticated }) => {
   const [activeSection, setActiveSection] = useState("cases");
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const renderContent = () => {
     switch (activeSection) {
@@ -36,10 +37,12 @@ const WorkspacePage = ({ setIsAuthenticated }) => {
       <Sidebar
         activeSection={activeSection}
         setActiveSection={setActiveSection}
+        isMenuOpen={isMenuOpen}
+        setIsMenuOpen={setIsMenuOpen}
       />
 
       <div className="dashboard-main">
-        <Topbar setIsAuthenticated={setIsAuthenticated} />
+        <Topbar setIsAuthenticated={setIsAuthenticated} setIsMenuOpen={setIsMenuOpen} />
         <div className="dashboard-content">{renderContent()}</div>
       </div>
     </div>

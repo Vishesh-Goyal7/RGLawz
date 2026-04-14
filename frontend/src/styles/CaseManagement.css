@@ -675,3 +675,54 @@
     font-size: 0.9rem;
   }
 }
+
+@media (max-width: 600px) {
+  /* bottom-sheet modals */
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal-card {
+    border-radius: 18px 18px 0 0;
+    width: 100%;
+    max-width: 100% !important;
+  }
+
+  .large-modal,
+  .history-modal {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .modal-header {
+    padding: 14px 16px;
+  }
+
+  .case-form-grid {
+    padding: 14px 16px;
+    gap: 12px;
+  }
+
+  .modal-actions {
+    padding-right: 16px;
+    padding-bottom: 20px;
+  }
+
+  .case-hearings-body {
+    padding: 14px 16px;
+  }
+
+  .hearing-detail-body {
+    padding: 14px 16px;
+    gap: 12px;
+  }
+
+  .history-meta {
+    padding: 14px 16px;
+  }
+
+  .history-list {
+    padding: 14px 16px;
+  }
+}

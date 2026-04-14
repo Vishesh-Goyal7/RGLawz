@@ -229,3 +229,14 @@
     align-items: flex-start;
   }
 }
+
+@media (max-width: 600px) {
+  .hearing-form-grid {
+    padding: 14px 16px;
+    gap: 12px;
+  }
+
+  .hearing-toolbar {
+    padding: 14px 16px;
+  }
+}

@@ -199,6 +199,17 @@
   }
 }
 
+@media (max-width: 600px) {
+  .user-filters {
+    padding: 14px 16px;
+    gap: 10px;
+  }
+
+  .user-toolbar {
+    padding: 14px 16px;
+  }
+}
+
 .assigned-case-grid {
   display: flex;
   flex-direction: column;

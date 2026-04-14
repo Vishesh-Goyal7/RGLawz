@@ -311,3 +311,50 @@
   gap: 10px;
   margin-top: 4px;
 }
+
+@media (max-width: 900px) {
+  .cd-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 14px 16px;
+  }
+
+  .cd-search {
+    width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .cd-detail-modal {
+    border-radius: 18px 18px 0 0;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .cd-edit-modal {
+    border-radius: 18px 18px 0 0;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .cd-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cd-account-summary {
+    flex-wrap: wrap;
+  }
+
+  .cd-account-stat {
+    min-width: 120px;
+  }
+
+  .cd-detail-body {
+    padding: 0 14px 16px;
+  }
+
+  .cd-edit-form {
+    padding: 0 14px 16px;
+  }
+}

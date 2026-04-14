@@ -24,3 +24,11 @@
   flex: 1;
   min-height: 0;
 }
+
+@media (max-width: 600px) {
+  .office-banner {
+    font-size: 0.72rem;
+    letter-spacing: 2px;
+    padding: 9px 0;
+  }
+}
