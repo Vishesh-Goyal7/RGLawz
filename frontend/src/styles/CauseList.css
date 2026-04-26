@@ -59,8 +59,13 @@
   transition: background 0.15s;
 }
 
-.cl-nav-btn:hover {
+.cl-nav-btn:hover:not(:disabled) {
   background: #f6ece6;
+}
+
+.cl-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 /* ── overdue alert banner ───────────────────────────── */
@@ -336,9 +341,8 @@
 /* truncated cells */
 .cl-truncate {
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
 }
 
 /* verdict: wraps freely, never truncates */

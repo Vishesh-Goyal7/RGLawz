@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import api from "../services/api";
 import HearingFormModal from "./HearingFormModal";
 import "../styles/CauseList.css";
@@ -29,9 +29,9 @@ const HearingTable = ({ rows, isPast, isOverdue = false, modalDate, onUpdate, he
     <thead>
       <tr>
         <th className="cl-col-date">{isPast ? "Hearing Date" : "Previous Hearing Date"}</th>
+        <th className="cl-col-judge">Judge</th>
         <th className="cl-col-party">Petitioner</th>
         <th className="cl-col-party">Defendant</th>
-        <th className="cl-col-judge">Judge</th>
         <th className="cl-col-verdict">Verdict</th>
         {isPast && <th className="cl-col-date">Next Date</th>}
         <th className="cl-col-action">Action</th>
@@ -75,6 +75,9 @@ const HearingTable = ({ rows, isPast, isOverdue = false, modalDate, onUpdate, he
                 {formatDisplay(prevDate)}
               </span>
             </td>
+            <td className="cl-col-judge">
+              <span className="cl-truncate" title={item.judgeName}>{item.judgeName || "—"}</span>
+            </td>
             <td className="cl-col-party">
               <span className="cl-truncate" title={item.petitioner}>
                 {item.petitioner || "—"}
@@ -86,9 +89,6 @@ const HearingTable = ({ rows, isPast, isOverdue = false, modalDate, onUpdate, he
                 {item.defendant || "—"}
                 {item.ourClient === "defendant" && <span className="our-client-mark" title="Our Client"> *</span>}
               </span>
-            </td>
-            <td className="cl-col-judge">
-              <span className="cl-truncate" title={item.judgeName}>{item.judgeName || "—"}</span>
             </td>
             <td className="cl-col-verdict">
               <span className="cl-verdict-text">{verdict}</span>
@@ -239,12 +239,46 @@ const CauseList = () => {
     return cases.filter((c) => toLocalDateStr(c.latestHearingId?.hearingDate) === ds);
   };
 
-  const modalCases      = casesForDate(modalDate);
+  const modalCases      = casesForDate(modalDate).sort((a, b) => {
+    const aD = a.previousHearingDate ? new Date(a.previousHearingDate) : null;
+    const bD = b.previousHearingDate ? new Date(b.previousHearingDate) : null;
+    if (!aD && !bD) return 0;
+    if (!aD) return 1;
+    if (!bD) return -1;
+    return aD - bD;
+  });
   const isPastModal     = modalDate && modalDate < today;
   const isTodayModal    = modalDate === today;
   const pendingInModal  = overdueCases.filter(
     (c) => !modalCases.some((m) => m._id === c._id)
   );
+
+  /* ── modal date navigation ───────────────────────────── */
+  const allActiveDates = useMemo(() => {
+    const dateSet = new Set();
+    allHearings.forEach((h) => {
+      const ds = toLocalDateStr(h.hearingDate);
+      if (ds) dateSet.add(ds);
+    });
+    cases.forEach((c) => {
+      const tipDate = toLocalDateStr(c.latestHearingId?.hearingDate);
+      if (tipDate && tipDate >= today) dateSet.add(tipDate);
+    });
+    return [...dateSet].sort();
+  }, [allHearings, cases, today]);
+
+  const modalDateIdx = modalDate ? allActiveDates.indexOf(modalDate) : -1;
+  const prevNavDate  = modalDateIdx > 0 ? allActiveDates[modalDateIdx - 1] : null;
+  const nextNavDate  = modalDateIdx !== -1 && modalDateIdx < allActiveDates.length - 1
+    ? allActiveDates[modalDateIdx + 1] : null;
+
+  const navigateToDate = (dateStr) => {
+    if (!dateStr) return;
+    const [y, m] = dateStr.split("-").map(Number);
+    setCalYear(y);
+    setCalMonth(m - 1);
+    setModalDate(dateStr);
+  };
 
   /* ── print ───────────────────────────────────────────── */
   const handlePrint = () => {
@@ -588,6 +622,18 @@ const CauseList = () => {
                 <span className="cl-list-count">{modalCases.length}</span>
               </h3>
               <div className="cl-modal-header-actions">
+                <button
+                  className="cl-nav-btn"
+                  onClick={() => navigateToDate(prevNavDate)}
+                  disabled={!prevNavDate}
+                  title={prevNavDate ? formatDisplay(prevNavDate + "T00:00:00Z") : "No earlier date"}
+                >‹</button>
+                <button
+                  className="cl-nav-btn"
+                  onClick={() => navigateToDate(nextNavDate)}
+                  disabled={!nextNavDate}
+                  title={nextNavDate ? formatDisplay(nextNavDate + "T00:00:00Z") : "No later date"}
+                >›</button>
                 <button className="cl-print-btn" title="Print cause list" onClick={handlePrint}>
                   🖨 Print
                 </button>
