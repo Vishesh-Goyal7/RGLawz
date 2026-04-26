@@ -24,7 +24,7 @@
     "eject": "react-scripts eject",
     "electron:dev": "electron .",
     "electron:build:mac": "react-scripts build && electron-builder --mac",
-    "electron:publish:mac": "react-scripts build && electron-builder --mac --publish always"
+    "electron:publish:mac": "react-scripts build && electron-builder --mac --publish always && node ../backend/scripts/cleanup-releases.js"
   },
   "eslintConfig": {
     "extends": [

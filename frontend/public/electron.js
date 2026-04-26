@@ -21,16 +21,24 @@ function createWindow() {
 }
 
 function setupAutoUpdater() {
-  autoUpdater.autoDownload = true;
+  autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
 
-  autoUpdater.on("update-available", () => {
-    dialog.showMessageBox(mainWindow, {
-      type: "info",
-      title: "Update Available",
-      message: "A new version of RGLawz is available and is being downloaded in the background.",
-      buttons: ["OK"],
-    });
+  autoUpdater.on("update-available", (info) => {
+    dialog
+      .showMessageBox(mainWindow, {
+        type: "info",
+        title: "Update Available",
+        message: `RGLawz v${info.version} is available. Would you like to download and install it now?`,
+        buttons: ["Download Now", "Later"],
+        defaultId: 0,
+        cancelId: 1,
+      })
+      .then((result) => {
+        if (result.response === 0) {
+          autoUpdater.downloadUpdate();
+        }
+      });
   });
 
   autoUpdater.on("update-downloaded", () => {
@@ -38,9 +46,10 @@ function setupAutoUpdater() {
       .showMessageBox(mainWindow, {
         type: "info",
         title: "Update Ready",
-        message: "A new version has been downloaded. RGLawz will restart to apply the update.",
+        message: "The update has been downloaded. RGLawz will restart to apply the update.",
         buttons: ["Restart Now", "Later"],
         defaultId: 0,
+        cancelId: 1,
       })
       .then((result) => {
         if (result.response === 0) {
@@ -51,9 +60,16 @@ function setupAutoUpdater() {
 
   autoUpdater.on("error", (err) => {
     console.error("Auto-updater error:", err);
+    dialog.showMessageBox(mainWindow, {
+      type: "error",
+      title: "Update Failed",
+      message: "RGLawz could not check for or install an update.",
+      detail: err.message,
+      buttons: ["OK"],
+    });
   });
 
-  // Check for updates 5 seconds after launch (gives app time to load)
+  // Check for updates 5 seconds after launch
   setTimeout(() => {
     autoUpdater.checkForUpdates();
   }, 5000);
