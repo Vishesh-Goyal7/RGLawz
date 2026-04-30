@@ -218,9 +218,32 @@
   line-height: 1.5;
 }
 
-/* past-date pending badge — red to flag unresolved hearings */
+/* past-date done count — faded */
+.cl-badge-past {
+  background: #c4a898;
+  color: #fff;
+  opacity: 0.75;
+}
+
+/* past-date pending count — prominent red */
 .cl-badge-pending {
   background: #b5341a;
+  color: #fff;
+}
+
+/* wrapper for split past badge */
+.cl-badge-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px;
+}
+
+.cl-badge-sep {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #999;
+  line-height: 1;
 }
 
 /* ── date modal ─────────────────────────────────────── */
@@ -366,6 +389,24 @@
   color: #b5341a;
   font-style: italic;
   font-size: 0.82rem;
+}
+
+.cl-next-date-chip {
+  display: inline-block;
+  background: #eaf5ea;
+  color: #2e7d32;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.cl-court-name {
+  display: block;
+  font-size: 0.78rem;
+  color: #888;
+  margin-top: 2px;
 }
 
 .our-client-mark {

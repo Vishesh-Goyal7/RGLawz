@@ -165,6 +165,7 @@ const HearingFormModal = ({ onClose, onSuccess, editingHearing, authHeaders }) =
               name="nextHearingDate"
               value={formData.nextHearingDate}
               onChange={handleChange}
+              min={formData.hearingDate || undefined}
             />
           </div>
 

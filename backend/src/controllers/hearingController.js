@@ -401,6 +401,22 @@ const deleteHearing = async (req, res) => {
     }
 
     const caseId = hearing.caseId;
+
+    if (hearing.hearingStatus === "upcoming") {
+      // Clear nextHearingDate on the parent "done" hearing that pointed to this one
+      await Hearing.updateOne(
+        { caseId, nextHearingDate: hearing.hearingDate, hearingStatus: "done" },
+        { $set: { nextHearingDate: null } }
+      );
+    } else if (hearing.hearingStatus === "done" && hearing.nextHearingDate) {
+      // Cascade-delete the linked upcoming hearing
+      await Hearing.deleteOne({
+        caseId,
+        hearingDate: hearing.nextHearingDate,
+        hearingStatus: "upcoming",
+      });
+    }
+
     await Hearing.findByIdAndDelete(id);
 
     // Re-sync the case from remaining hearings

@@ -24,7 +24,9 @@ const formatDisplay = (dateVal) => {
 };
 
 /* ── shared table ────────────────────────────────────── */
-const HearingTable = ({ rows, isPast, isOverdue = false, modalDate, onUpdate, hearingLoading, allHearings = [], today = "" }) => (
+const HearingTable = ({ rows, isPast, isOverdue = false, modalDate, onUpdate, hearingLoading, allHearings = [], today = "" }) => {
+  const isToday = modalDate === today;
+  return (
   <table className={`cl-table${isOverdue ? " cl-table-overdue" : ""}`}>
     <thead>
       <tr>
@@ -34,7 +36,7 @@ const HearingTable = ({ rows, isPast, isOverdue = false, modalDate, onUpdate, he
         <th className="cl-col-party">Defendant</th>
         <th className="cl-col-verdict">Verdict</th>
         {isPast && <th className="cl-col-date">Next Date</th>}
-        <th className="cl-col-action">Action</th>
+        <th className="cl-col-action">{isToday ? "Next Date" : "Action"}</th>
       </tr>
     </thead>
     <tbody>
@@ -45,13 +47,15 @@ const HearingTable = ({ rows, isPast, isOverdue = false, modalDate, onUpdate, he
         const isOverdueTip = isPast && toLocalDateStr(item.latestHearingId?.hearingDate) === modalDate;
         const showUpdate = isOverdue ? true : (isPast ? (!item.nextHearingDate || isOverdueTip) : true);
 
-        // For past non-overdue rows: find the hearing that actually occurred on modalDate
-        const specificHearing = isPast && !isOverdue && modalDate
+        // For past and today non-overdue rows: find the hearing that actually occurred on modalDate
+        const specificHearing = (isPast || isToday) && !isOverdue && modalDate
           ? allHearings.find(h =>
               toLocalDateStr(h.hearingDate) === modalDate &&
               (h.caseId?._id || h.caseId)?.toString() === item._id?.toString()
             )
           : null;
+
+        const isDoneToday = isToday && !isOverdue && specificHearing?.hearingStatus === "done" && !!specificHearing?.nextHearingDate;
 
         // Determine the next date to display in the Next Date column
         const nextDateNode = (() => {
@@ -77,6 +81,9 @@ const HearingTable = ({ rows, isPast, isOverdue = false, modalDate, onUpdate, he
             </td>
             <td className="cl-col-judge">
               <span className="cl-truncate" title={item.judgeName}>{item.judgeName || "—"}</span>
+              {item.courtName && (
+                <span className="cl-court-name">({item.courtName})</span>
+              )}
             </td>
             <td className="cl-col-party">
               <span className="cl-truncate" title={item.petitioner}>
@@ -99,7 +106,9 @@ const HearingTable = ({ rows, isPast, isOverdue = false, modalDate, onUpdate, he
               </td>
             )}
             <td className="cl-col-action">
-              {showUpdate && (
+              {isDoneToday ? (
+                <span className="cl-next-date-chip">{formatDisplay(specificHearing.nextHearingDate)}</span>
+              ) : showUpdate && (
                 <button
                   className="cl-update-btn"
                   onClick={() => onUpdate(item)}
@@ -114,7 +123,8 @@ const HearingTable = ({ rows, isPast, isOverdue = false, modalDate, onUpdate, he
       })}
     </tbody>
   </table>
-);
+  );
+};
 
 const MONTHS = [
   "January","February","March","April","May","June",
@@ -177,26 +187,20 @@ const CauseList = () => {
   };
 
   /* ── date maps driven by the chain ──────────────────── */
-  const pastCountByDate   = {};
   const futureCountByDate = {};
 
   cases.forEach((c) => {
-    const prevDate = toLocalDateStr(c.previousHearingDate);
-    const tipDate  = toLocalDateStr(c.latestHearingId?.hearingDate);
-
-    // Past: last completed hearing date
-    if (prevDate && prevDate < today)
-      pastCountByDate[prevDate] = (pastCountByDate[prevDate] || 0) + 1;
-
-    if (tipDate) {
-      if (tipDate >= today) {
-        // Future: chain tip is an upcoming hearing
-        futureCountByDate[tipDate] = (futureCountByDate[tipDate] || 0) + 1;
-      } else if (tipDate !== prevDate) {
-        // Overdue tip: tip date is in the past but not yet updated — count it as a past date
-        pastCountByDate[tipDate] = (pastCountByDate[tipDate] || 0) + 1;
-      }
+    const tipDate = toLocalDateStr(c.latestHearingId?.hearingDate);
+    if (tipDate && tipDate > today) {
+      futureCountByDate[tipDate] = (futureCountByDate[tipDate] || 0) + 1;
     }
+  });
+
+  // Total hearings per date from allHearings — used for past + today badge counts
+  const hearingCountByDate = {};
+  allHearings.forEach((h) => {
+    const ds = toLocalDateStr(h.hearingDate);
+    if (ds) hearingCountByDate[ds] = (hearingCountByDate[ds] || 0) + 1;
   });
 
   const overdueCases = cases
@@ -219,14 +223,14 @@ const CauseList = () => {
   /* ── calendar helpers ────────────────────────────────── */
   const countForDate = (ds) => {
     if (!ds) return 0;
-    if (ds < today) return pendingCountByDate[ds] || 0;
+    if (ds <= today) return hearingCountByDate[ds] || 0;
     return futureCountByDate[ds] || 0;
   };
 
   const casesForDate = (ds) => {
     if (!ds) return [];
-    if (ds < today) {
-      // Past: use full hearings list so every historical hearing date is covered
+    if (ds <= today) {
+      // Past + today: use full hearings list so completed hearings stay visible
       const caseIdsOnDate = new Set(
         allHearings
           .filter((h) => toLocalDateStr(h.hearingDate) === ds)
@@ -235,7 +239,7 @@ const CauseList = () => {
       );
       return cases.filter((c) => caseIdsOnDate.has(c._id?.toString()));
     }
-    // Today / future: match on the chain tip's date
+    // Future: match on the chain tip's date
     return cases.filter((c) => toLocalDateStr(c.latestHearingId?.hearingDate) === ds);
   };
 
@@ -296,9 +300,12 @@ const CauseList = () => {
         const markD = item.ourClient === "defendant"
           ? ' <span style="color:red;font-weight:700">*</span>' : "";
         const parties = `${petitioner}${markP} V/S ${defendant}${markD}`;
+        const judgeCell = item.courtName
+          ? `${item.judgeName || "—"}<br/><span style="font-size:10pt;color:#555">(${item.courtName})</span>`
+          : (item.judgeName || "—");
         return `<tr>
           <td>${prevDate}</td>
-          <td>${item.judgeName || "—"}</td>
+          <td>${judgeCell}</td>
           <td>${parties}</td>
           <td></td>
           <td></td>
@@ -578,10 +585,12 @@ const CauseList = () => {
             <div key={d} className="cl-day-name">{d}</div>
           ))}
           {cells.map((day, idx) => {
-            const ds      = cellDateStr(day);
-            const count   = countForDate(ds);
-            const isToday = ds === today;
-            const isPast  = ds && ds < today;
+            const ds           = cellDateStr(day);
+            const count        = countForDate(ds);
+            const isToday      = ds === today;
+            const isPast       = ds && ds < today;
+            const pendingCount = isPast ? (pendingCountByDate[ds] || 0) : 0;
+            const doneCount    = isPast ? count - pendingCount : count;
             return (
               <div
                 key={idx}
@@ -598,9 +607,21 @@ const CauseList = () => {
                   <>
                     <span className="cl-day-num">{day}</span>
                     {count > 0 && (
-                      <span className={`cl-case-badge ${isPast ? "cl-badge-pending" : ""}`}>
-                        {isPast ? `${count} pending` : count}
-                      </span>
+                      isPast ? (
+                        <div className="cl-badge-group">
+                          {doneCount > 0 && (
+                            <span className="cl-case-badge cl-badge-past">{doneCount}</span>
+                          )}
+                          {doneCount > 0 && pendingCount > 0 && (
+                            <span className="cl-badge-sep">+</span>
+                          )}
+                          {pendingCount > 0 && (
+                            <span className="cl-case-badge cl-badge-pending">{pendingCount} pending</span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="cl-case-badge">{count}</span>
+                      )
                     )}
                   </>
                 )}
