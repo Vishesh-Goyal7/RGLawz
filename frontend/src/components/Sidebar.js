@@ -10,6 +10,7 @@ const Sidebar = ({ activeSection, setActiveSection, isMenuOpen, setIsMenuOpen })
     { key: "hearings", label: "Hearings" },
     { key: "clientAccounts", label: "Client Accounts" },
     { key: "clientDetails", label: "Client Details" },
+    { key: "hearingBills", label: "Bills" },
     ...(user.role === "admin" ? [{ key: "users", label: "Users" }] : []),
   ];
 

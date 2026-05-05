@@ -1,0 +1,280 @@
+/* ── Page layout ─────────────────────────────────────── */
+.hearing-bills {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Toolbar ─────────────────────────────────────────── */
+.hb-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.hb-toolbar h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+  color: var(--text-primary, #1a1a2e);
+}
+
+.hb-toolbar p {
+  font-size: 0.85rem;
+  color: var(--text-muted, #6b7280);
+  margin: 0;
+}
+
+/* ── Filter card ─────────────────────────────────────── */
+.hb-filter-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+
+.hb-filter-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.hb-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.hb-filter-group label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.hb-filter-group input[type="date"] {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 7px;
+  font-size: 0.9rem;
+  color: #1f2937;
+  background: #f9fafb;
+  outline: none;
+  transition: border-color .15s;
+}
+
+.hb-filter-group input[type="date"]:focus {
+  border-color: #6366f1;
+  background: #fff;
+}
+
+.hb-search-btn {
+  height: 38px;
+  padding: 0 20px;
+  align-self: flex-end;
+}
+
+.hb-export-btn {
+  height: 38px;
+  padding: 0 20px;
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s;
+  align-self: flex-end;
+}
+
+.hb-export-btn:hover {
+  background: #15803d;
+}
+
+/* ── Empty state ─────────────────────────────────────── */
+.hb-empty-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 40px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+/* ── Group list ──────────────────────────────────────── */
+.hb-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Case card ───────────────────────────────────────── */
+.hb-case-card {
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,.05);
+  transition: border-color .15s;
+}
+
+.hb-case-card.hb-case-checked {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99,102,241,.15), 0 1px 4px rgba(0,0,0,.05);
+}
+
+.hb-case-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hb-case-card.hb-case-checked .hb-case-header {
+  background: #eef2ff;
+}
+
+.hb-case-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+}
+
+.hb-case-label input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  cursor: pointer;
+  accent-color: #6366f1;
+  flex-shrink: 0;
+}
+
+.hb-case-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hb-hearing-count {
+  font-size: 0.78rem;
+  color: #6b7280;
+  background: #e5e7eb;
+  padding: 2px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.hb-case-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 0.8rem;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+/* ── Hearings table ──────────────────────────────────── */
+.hb-table-wrapper {
+  overflow-x: auto;
+}
+
+.hb-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.hb-table thead tr {
+  background: #f3f4f6;
+}
+
+.hb-table th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #6b7280;
+  white-space: nowrap;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.hb-table td {
+  padding: 10px 14px;
+  color: #374151;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: top;
+}
+
+.hb-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.hb-table tbody tr:hover {
+  background: #fafafa;
+}
+
+.hb-col-check {
+  width: 44px;
+  text-align: center !important;
+  padding: 10px 8px !important;
+}
+
+.hb-col-check input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: #6366f1;
+}
+
+.hb-col-verdict {
+  max-width: 200px;
+}
+
+.hb-col-notes {
+  max-width: 240px;
+  color: #6b7280;
+}
+
+.hb-row-unchecked {
+  opacity: 0.4;
+}
+
+/* ── Responsive ──────────────────────────────────────── */
+@media (max-width: 640px) {
+  .hearing-bills {
+    padding: 16px;
+  }
+
+  .hb-filter-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hb-search-btn,
+  .hb-export-btn {
+    width: 100%;
+    align-self: auto;
+  }
+
+  .hb-case-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

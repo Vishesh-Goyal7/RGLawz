@@ -26,6 +26,18 @@ const invoiceSchema = new mongoose.Schema(
       enum: ["Due", "Cleared", "Overdue"],
       default: "Due",
     },
+    invoiceNumber: {
+      type: String,
+      default: null,
+    },
+    clientCode: {
+      type: String,
+      default: null,
+    },
+    items: {
+      type: [{ particulars: { type: String }, amount: { type: Number } }],
+      default: [],
+    },
     description: {
       type: String,
       trim: true,

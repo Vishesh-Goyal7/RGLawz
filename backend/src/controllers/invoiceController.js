@@ -21,7 +21,7 @@ const BUCKET = process.env.AWS_S3_BUCKET;
  */
 const createInvoice = async (req, res) => {
   try {
-    const { clientDetailId, caseId, invoiceDate, amount, status, description } = req.body;
+    const { clientDetailId, caseId, invoiceDate, amount, status, description, invoiceNumber, clientCode, items } = req.body;
     const file = req.file; // optional
 
     if (!clientDetailId || !caseId || !invoiceDate || amount === undefined) {
@@ -55,6 +55,11 @@ const createInvoice = async (req, res) => {
       mimeType = file.mimetype;
     }
 
+    let parsedItems = [];
+    if (items) {
+      try { parsedItems = JSON.parse(items); } catch (_) {}
+    }
+
     const invoice = await Invoice.create({
       clientDetailId,
       caseId,
@@ -62,6 +67,9 @@ const createInvoice = async (req, res) => {
       amount: Number(amount),
       status: status || "Due",
       description: description?.trim() || "",
+      invoiceNumber: invoiceNumber || null,
+      clientCode: clientCode || null,
+      items: parsedItems,
       s3Key,
       fileSize,
       mimeType,
@@ -92,6 +100,16 @@ const getInvoices = async (req, res) => {
         return res.status(400).json({ success: false, message: "Invalid clientDetailId." });
       }
       filter.clientDetailId = req.query.clientDetailId;
+    }
+    if (req.query.caseId) {
+      if (!mongoose.Types.ObjectId.isValid(req.query.caseId)) {
+        return res.status(400).json({ success: false, message: "Invalid caseId." });
+      }
+      filter.caseId = req.query.caseId;
+    }
+    if (req.query.caseIds) {
+      const ids = req.query.caseIds.split(",").filter((id) => mongoose.Types.ObjectId.isValid(id));
+      if (ids.length > 0) filter.caseId = { $in: ids };
     }
 
     const invoices = await Invoice.find(filter)

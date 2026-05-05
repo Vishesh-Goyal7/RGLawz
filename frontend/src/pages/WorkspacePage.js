@@ -7,6 +7,7 @@ import UserManagement from "../components/UserManagement";
 import CauseList from "../components/CauseList";
 import ClientAccounts from "../components/ClientAccounts";
 import ClientDetails from "../components/ClientDetails";
+import HearingBills from "../components/HearingBills";
 import "../styles/DashboardPage.css";
 
 const WorkspacePage = ({ setIsAuthenticated }) => {
@@ -79,6 +80,8 @@ const WorkspacePage = ({ setIsAuthenticated }) => {
         return <ClientAccounts />;
       case "clientDetails":
         return <ClientDetails />;
+      case "hearingBills":
+        return <HearingBills />;
       case "users":
         return <UserManagement />;
       default:

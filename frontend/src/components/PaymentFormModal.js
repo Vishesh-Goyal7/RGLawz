@@ -4,15 +4,15 @@ import "../styles/CaseManagement.css";
 
 const METHODS = ["Cash", "Cheque", "Bank Transfer", "UPI", "Other"];
 
-const PaymentFormModal = ({ clientCases, editingPayment, authHeaders, onClose, onSuccess }) => {
+const PaymentFormModal = ({ clientCases, editingPayment, prefillData, authHeaders, onClose, onSuccess }) => {
   const isSingleCase = clientCases.length === 1;
 
   const [formData, setFormData] = useState({
-    caseId:        editingPayment ? editingPayment.caseId._id || editingPayment.caseId : (isSingleCase ? clientCases[0]._id : ""),
-    date:          editingPayment ? editingPayment.date?.slice(0, 10) : "",
-    amount:        editingPayment ? editingPayment.amount : "",
-    paymentMethod: editingPayment ? editingPayment.paymentMethod : "Cash",
-    notes:         editingPayment ? editingPayment.notes : "",
+    caseId:        editingPayment ? (editingPayment.caseId._id || editingPayment.caseId) : (prefillData?.caseId || (isSingleCase ? clientCases[0]._id : "")),
+    date:          editingPayment ? editingPayment.date?.slice(0, 10) : (prefillData?.date || ""),
+    amount:        editingPayment ? editingPayment.amount : (prefillData?.amount || ""),
+    paymentMethod: editingPayment ? editingPayment.paymentMethod : (prefillData?.paymentMethod || "Cash"),
+    notes:         editingPayment ? editingPayment.notes : (prefillData?.notes || ""),
   });
 
   const [loading, setLoading] = useState(false);

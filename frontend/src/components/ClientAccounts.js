@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import api from "../services/api";
 import PaymentFormModal from "./PaymentFormModal";
+import InvoiceFormModal from "./InvoiceFormModal";
+import InvoiceListModal from "./InvoiceListModal";
 import "../styles/ClientAccounts.css";
 
 const fmt = (dateVal) =>
@@ -26,19 +28,29 @@ const ClientAccounts = () => {
   const [loading, setLoading]   = useState(true);
   const [searchText, setSearchText] = useState("");
 
-  const [paymentModal, setPaymentModal] = useState(null); // { clientCases, editingPayment? }
+  const [paymentModal, setPaymentModal]   = useState(null); // { clientCases, editingPayment? }
+  const [invoiceModal, setInvoiceModal]   = useState(null); // { clientCases }
+  const [invoiceListModal, setInvoiceListModal] = useState(null); // { caseId, caseName, clientCases }
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [casesRes, paymentsRes] = await Promise.all([
+      const [casesResult, paymentsResult] = await Promise.allSettled([
         api.get("/cases", authHeaders),
         api.get("/payments", authHeaders),
       ]);
-      setCases(casesRes.data.data || []);
-      setPayments(paymentsRes.data.data || []);
-    } catch (err) {
-      console.error("Failed to fetch client accounts data:", err);
+
+      if (casesResult.status === "fulfilled") {
+        setCases(casesResult.value.data.data || []);
+      } else {
+        console.error("Failed to fetch cases:", casesResult.reason);
+      }
+
+      if (paymentsResult.status === "fulfilled") {
+        setPayments(paymentsResult.value.data.data || []);
+      } else {
+        console.error("Failed to fetch payments:", paymentsResult.reason);
+      }
     } finally {
       setLoading(false);
     }
@@ -135,12 +147,20 @@ const ClientAccounts = () => {
                     <span className="ca-client-name">{group.clientName}</span>
                     <span className="ca-total-badge">Total Paid: {fmtAmount(total)}</span>
                   </div>
-                  <button
-                    className="primary-btn ca-add-btn"
-                    onClick={() => setPaymentModal({ clientCases: group.cases })}
-                  >
-                    + Add Payment
-                  </button>
+                  <div className="ca-header-btns">
+                    <button
+                      className="primary-btn ca-add-btn"
+                      onClick={() => setPaymentModal({ clientCases: group.cases })}
+                    >
+                      + Add Payment
+                    </button>
+                    <button
+                      className="ca-invoice-btn"
+                      onClick={() => setInvoiceModal({ clientCases: group.cases })}
+                    >
+                      + Create Invoice
+                    </button>
+                  </div>
                 </div>
 
                 {/* cases */}
@@ -158,7 +178,20 @@ const ClientAccounts = () => {
                             <p className="ca-payment-terms">{c.internalNotes}</p>
                           )}
                         </div>
-                        <span className="ca-case-total">{fmtAmount(caseTotal)}</span>
+                        <div className="ca-case-total-row">
+                          <span className="ca-case-total">{fmtAmount(caseTotal)}</span>
+                          <button
+                            className="ca-invoices-btn"
+                            title="View invoices for this case"
+                            onClick={() => setInvoiceListModal({
+                              caseId: c._id,
+                              caseName: c.caseNumber ? `${c.caseNumber} — ${c.caseName}` : c.caseName,
+                              clientCases: group.cases,
+                            })}
+                          >
+                            Invoices
+                          </button>
+                        </div>
                       </div>
 
                       {casePayments.length === 0 ? (
@@ -221,6 +254,28 @@ const ClientAccounts = () => {
           authHeaders={authHeaders}
           onClose={() => setPaymentModal(null)}
           onSuccess={fetchData}
+        />
+      )}
+
+      {/* create invoice modal */}
+      {invoiceModal && (
+        <InvoiceFormModal
+          clientCases={invoiceModal.clientCases}
+          authHeaders={authHeaders}
+          onClose={() => setInvoiceModal(null)}
+          onSuccess={fetchData}
+        />
+      )}
+
+      {/* invoice list modal */}
+      {invoiceListModal && (
+        <InvoiceListModal
+          caseId={invoiceListModal.caseId}
+          caseName={invoiceListModal.caseName}
+          clientCases={invoiceListModal.clientCases}
+          authHeaders={authHeaders}
+          onClose={() => setInvoiceListModal(null)}
+          onPaymentAdded={fetchData}
         />
       )}
     </div>
